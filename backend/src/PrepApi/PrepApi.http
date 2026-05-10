@@ -1,0 +1,6 @@
+@PrepApi_HostAddress = http://localhost:5131
+
+GET {{PrepApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
