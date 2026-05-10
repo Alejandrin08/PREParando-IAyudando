@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { actasApi } from '../../services/api'
-import StatusBadge from '../shared/StatusBadge'
 import ActaViewer from './ActaViewer'
+import StatusBadge from '../shared/StatusBadge'
+import { fieldLabels, validationLabels, partyIcons, fieldOrder } from '../../utils/labels'
+
+const isTotalField = name =>
+  name.startsWith('total_') || name === 'lista_nominal' || name === 'boletas_sobrantes'
+
+const isIdentityField = name =>
+  ['entidad', 'municipio', 'seccion'].includes(name)
 
 export default function ActaDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const [acta, setActa] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [editing, setEditing] = useState({})
-  const [actionLoading, setActionLoading] = useState(false)
-  const capturista = 'capturista_01' 
   const [selectedField, setSelectedField] = useState(null)
+  const [editingField, setEditingField] = useState(null)
+  const [editValue, setEditValue] = useState('')
+  const [actionLoading, setActionLoading] = useState(false)
+  const capturista = 'capturista_01'
 
   const fetchActa = async () => {
     try {
@@ -27,11 +35,16 @@ export default function ActaDetail() {
 
   useEffect(() => { fetchActa() }, [id])
 
-  const handleCorrect = async (fieldName, newValue) => {
+  const handleCorrect = async () => {
+    if (!editingField) return
     try {
       setActionLoading(true)
-      await actasApi.correctField(id, { fieldName, newValue, correctedBy: capturista })
-      setEditing(e => ({ ...e, [fieldName]: false }))
+      await actasApi.correctField(id, {
+        fieldName: editingField,
+        newValue: editValue,
+        correctedBy: capturista
+      })
+      setEditingField(null)
       fetchActa()
     } catch (e) {
       console.error(e)
@@ -66,178 +79,272 @@ export default function ActaDetail() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <span className="font-mono text-zinc-500 animate-pulse">Cargando acta...</span>
+      <span style={{ color: 'var(--text-muted)' }} className="text-sm animate-pulse">Cargando acta...</span>
     </div>
   )
 
   if (!acta) return (
-    <div className="text-center py-12">
-      <p className="font-mono text-zinc-500">Acta no encontrada</p>
+    <div className="flex items-center justify-center h-64">
+      <span style={{ color: 'var(--text-muted)' }} className="text-sm">Acta no encontrada</span>
     </div>
   )
 
-  const voteFields = acta.fields.filter(f =>
-    f.name.startsWith('votos_') || f.name.startsWith('total_') ||
-    f.name.startsWith('boletas_') || f.name.startsWith('lista_')
+  const sortedFields = [...acta.fields].sort((a, b) => {
+    const ai = fieldOrder.indexOf(a.name)
+    const bi = fieldOrder.indexOf(b.name)
+    if (ai === -1 && bi === -1) return 0
+    if (ai === -1) return 1
+    if (bi === -1) return -1
+    return ai - bi
+  })
+
+  const voteFields = sortedFields.filter(f =>
+    !isIdentityField(f.name) && !isTotalField(f.name)
   )
+  const totalFields = sortedFields.filter(f => isTotalField(f.name))
+
+  const canEdit = acta.status !== 'Approved' && acta.status !== 'Rejected'
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-start justify-between">
-        <div>
-          <button
-            onClick={() => navigate('/queue')}
-            className="text-xs font-mono text-zinc-500 hover:text-zinc-300 transition-colors mb-2 block"
-          >
-            ← Volver a la cola
+    <div className="max-w-screen-xl mx-auto px-8 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate('/queue')}
+            style={{ color: 'var(--text-muted)', border: '1px solid var(--border)', background: 'var(--surface)' }}
+            className="text-sm px-3 py-1.5 rounded-lg hover:bg-[var(--surface-2)] transition-colors">
+            ← Volver
           </button>
-          <h1 className="font-mono text-xl font-bold">
-            Acta #{acta.id}
-          </h1>
-          <p className="font-mono text-sm text-zinc-500 mt-1">
-            {acta.entity} · {acta.municipality} · Sección {acta.section}
-          </p>
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 style={{ color: 'var(--text)' }} className="text-xl font-semibold">
+                Acta #{acta.id}
+              </h1>
+              <StatusBadge value={acta.assignedQueue} />
+              <StatusBadge value={acta.status} />
+            </div>
+            <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-0.5">
+              {acta.entity} · {acta.municipality} · Sección {acta.section}
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-3">
-          <StatusBadge value={acta.assignedQueue} />
-          <StatusBadge value={acta.status} />
-        </div>
+
+        {canEdit && (
+          <div className="flex items-center gap-3">
+            <button onClick={handleReject} disabled={actionLoading}
+              style={{ border: '1px solid #fca5a5', color: '#b91c1c' }}
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
+              Rechazar acta
+            </button>
+            <button onClick={handleApprove} disabled={actionLoading}
+              style={{ background: 'var(--accent)', color: 'white' }}
+              className="px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+              Aprobar acta
+            </button>
+          </div>
+        )}
       </div>
 
       {acta.alerts?.length > 0 && (
-        <div className="border border-yellow-400/20 bg-yellow-400/5 rounded-lg p-4 space-y-1">
-          <p className="text-xs font-mono text-yellow-400 uppercase tracking-widest mb-2">Alertas del sistema</p>
-          {acta.alerts.map((alert, i) => (
-            <p key={i} className="text-sm font-mono text-yellow-300">· {alert}</p>
-          ))}
-        </div>
-      )}
-
-      {acta.imageUrl && (
-        <ActaViewer
-          imageUrl={acta.imageUrl}
-          fields={acta.fields}
-          selectedField={selectedField}
-        />
-      )}
-
-      <div className="border border-zinc-800 rounded-lg p-5 bg-zinc-900">
-        <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-3">Validaciones aritméticas</p>
-        <div className="space-y-2">
-          {acta.validations.map((v, i) => (
-            <div key={i} className="flex items-start gap-3">
-              <span className={`font-mono text-sm mt-0.5 ${v.passed ? 'text-emerald-400' : 'text-red-400'}`}>
-                {v.passed ? '✓' : '✗'}
-              </span>
-              <div>
-                <p className="font-mono text-xs text-zinc-400">{v.ruleName}</p>
-                <p className="font-mono text-xs text-zinc-600">{v.detail}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="border border-zinc-800 rounded-lg overflow-hidden">
-        <div className="bg-zinc-900 px-5 py-3 border-b border-zinc-800">
-          <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
-            Campos extraídos · Confianza global: {(acta.globalConfidence * 100).toFixed(0)}%
+        <div style={{ background: '#fef9c3', border: '1px solid #fde047' }}
+          className="rounded-xl px-5 py-4">
+          <p style={{ color: '#854d0e' }} className="text-xs font-semibold uppercase tracking-widest mb-2">
+            Alertas del sistema
           </p>
-        </div>
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-zinc-800 bg-zinc-900/50">
-              {['Campo', 'Valor extraído', 'Confianza', 'Nivel', 'Acción'].map(h => (
-                <th key={h} className="px-4 py-2 text-left text-xs font-mono text-zinc-600 uppercase tracking-widest">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {voteFields.map((field, i) => (
-              <tr
-                key={field.name}
-                onClick={() => setSelectedField(
-                  selectedField === field.name ? null : field.name
-                )}
-                className={`border-b border-zinc-800/50 cursor-pointer transition-colors ${
-                  selectedField === field.name ? 'bg-emerald-950/30' :
-                  field.confidenceLevel === 'Low' ? 'bg-red-950/20' :
-                  field.confidenceLevel === 'Medium' ? 'bg-yellow-950/20' :
-                  i % 2 === 0 ? 'bg-zinc-950' : 'bg-zinc-900/20'
-                } hover:bg-zinc-800/40`}
-              >
-                <td className="px-4 py-2.5 font-mono text-xs text-zinc-400">{field.name}</td>
-                <td className="px-4 py-2.5">
-                  {editing[field.name] ? (
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        defaultValue={field.value}
-                        id={`edit-${field.name}`}
-                        className="bg-zinc-800 border border-emerald-500 rounded px-2 py-1 text-sm font-mono text-zinc-100 w-24 focus:outline-none"
-                      />
-                      <button
-                        onClick={() => {
-                          const val = document.getElementById(`edit-${field.name}`).value
-                          handleCorrect(field.name, val)
-                        }}
-                        className="text-xs font-mono text-emerald-400 hover:text-emerald-300"
-                      >
-                        Guardar
-                      </button>
-                      <button
-                        onClick={() => setEditing(e => ({ ...e, [field.name]: false }))}
-                        className="text-xs font-mono text-zinc-500 hover:text-zinc-300"
-                      >
-                        Cancelar
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="font-mono text-sm text-zinc-200">
-                      {field.value ?? <span className="text-zinc-600">—</span>}
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5 font-mono text-sm text-zinc-400">
-                  {(field.confidence * 100).toFixed(0)}%
-                </td>
-                <td className="px-4 py-2.5">
-                  <StatusBadge value={field.confidenceLevel} type="confidence" />
-                </td>
-                <td className="px-4 py-2.5">
-                  {!editing[field.name] && acta.status !== 'Approved' && acta.status !== 'Rejected' && (
-                    <button
-                      onClick={() => setEditing(e => ({ ...e, [field.name]: true }))}
-                      className="text-xs font-mono text-zinc-500 hover:text-emerald-400 transition-colors"
-                    >
-                      Corregir
-                    </button>
-                  )}
-                </td>
-              </tr>
+          <ul className="space-y-1">
+            {acta.alerts.map((alert, i) => (
+              <li key={i} style={{ color: '#92400e' }} className="text-sm">· {alert}</li>
             ))}
-          </tbody>
-        </table>
+          </ul>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+
+        {acta.imageUrl && (
+          <div className="lg:sticky lg:top-20">
+            <ActaViewer
+              imageUrl={acta.imageUrl}
+              fields={acta.fields}
+              selectedField={selectedField}
+            />
+          </div>
+        )}
+
+        <div className="space-y-5">
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            className="rounded-xl overflow-hidden">
+            <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+              className="px-5 py-3">
+              <h2 style={{ color: 'var(--text)' }} className="text-sm font-semibold">
+                Validaciones aritméticas
+              </h2>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+              {acta.validations.map((v, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="mt-0.5 w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    style={{ background: v.passed ? '#dcfce7' : '#fee2e2' }}>
+                    <span style={{ color: v.passed ? '#15803d' : '#b91c1c' }} className="text-xs font-bold">
+                      {v.passed ? '✓' : '✗'}
+                    </span>
+                  </div>
+                  <div>
+                    <p style={{ color: 'var(--text)' }} className="text-sm">
+                      {validationLabels[v.ruleName] ?? v.ruleName}
+                    </p>
+                    <p style={{ color: 'var(--text-muted)' }} className="text-xs mt-0.5">{v.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            className="rounded-xl overflow-hidden">
+            <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+              className="px-5 py-3 flex items-center justify-between">
+              <h2 style={{ color: 'var(--text)' }} className="text-sm font-semibold">Resultados de votación</h2>
+              <span style={{ color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }} className="text-xs">
+                Confianza global: {(acta.globalConfidence * 100).toFixed(0)}%
+              </span>
+            </div>
+            <div className="divide-y divide-[var(--border)]">
+              {voteFields.map(field => (
+                <FieldRow
+                  key={field.name}
+                  field={field}
+                  isSelected={selectedField === field.name}
+                  isEditing={editingField === field.name}
+                  editValue={editValue}
+                  canEdit={canEdit}
+                  onSelect={() => setSelectedField(
+                    selectedField === field.name ? null : field.name
+                  )}
+                  onEdit={() => {
+                    setEditingField(field.name)
+                    setEditValue(field.value ?? '')
+                  }}
+                  onEditChange={setEditValue}
+                  onSave={handleCorrect}
+                  onCancel={() => setEditingField(null)}
+                  actionLoading={actionLoading}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Totales y control */}
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+            className="rounded-xl overflow-hidden">
+            <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}
+              className="px-5 py-3">
+              <h2 style={{ color: 'var(--text)' }} className="text-sm font-semibold">Totales y control</h2>
+            </div>
+            <div className="divide-y divide-[var(--border)]">
+              {totalFields.map(field => (
+                <FieldRow
+                  key={field.name}
+                  field={field}
+                  isSelected={selectedField === field.name}
+                  isEditing={editingField === field.name}
+                  editValue={editValue}
+                  canEdit={canEdit}
+                  onSelect={() => setSelectedField(
+                    selectedField === field.name ? null : field.name
+                  )}
+                  onEdit={() => {
+                    setEditingField(field.name)
+                    setEditValue(field.value ?? '')
+                  }}
+                  onEditChange={setEditValue}
+                  onSave={handleCorrect}
+                  onCancel={() => setEditingField(null)}
+                  actionLoading={actionLoading}
+                />
+              ))}
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FieldRow({
+  field, isSelected, isEditing, editValue, canEdit,
+  onSelect, onEdit, onEditChange, onSave, onCancel, actionLoading
+}) {
+  const label = fieldLabels[field.name] ?? field.name
+  const icon = partyIcons[field.name]
+  const confPct = (field.confidence * 100).toFixed(0)
+
+  const confidenceColor =
+    field.confidenceLevel === 'Low' ? '#b91c1c' :
+    field.confidenceLevel === 'Medium' ? '#b45309' : '#15803d'
+
+  const rowBg =
+    isSelected ? '#f0fdf4' :
+    field.confidenceLevel === 'Low' ? '#fff1f2' :
+    field.confidenceLevel === 'Medium' ? '#fffbeb' : 'transparent'
+
+  return (
+    <div
+      onClick={onSelect}
+      style={{ background: rowBg, cursor: 'pointer' }}
+      className="px-5 py-3 flex items-center gap-3 hover:bg-[var(--surface-2)] transition-colors">
+
+      <div className="w-7 h-7 shrink-0 flex items-center justify-center">
+        {icon ? (
+          <img src={icon} alt={label} className="w-7 h-7 object-contain"
+            onError={e => { e.target.style.display = 'none' }} />
+        ) : (
+          <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
+            className="w-7 h-7 rounded-full" />
+        )}
       </div>
 
-      {acta.status !== 'Approved' && acta.status !== 'Rejected' && (
-        <div className="flex items-center justify-end gap-4 pt-2">
-          <button
-            onClick={handleReject}
-            disabled={actionLoading}
-            className="px-5 py-2 border border-red-500/30 text-red-400 font-mono text-sm rounded hover:bg-red-500/10 transition-colors disabled:opacity-50"
-          >
-            Rechazar acta
+      <span style={{ color: 'var(--text)' }} className="text-sm flex-1">{label}</span>
+
+      {isEditing ? (
+        <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+          <input
+            type="text"
+            value={editValue}
+            onChange={e => onEditChange(e.target.value)}
+            style={{ border: '1px solid var(--accent)', color: 'var(--text)', background: 'var(--surface)' }}
+            className="w-20 px-2 py-1 rounded text-sm text-right focus:outline-none"
+            autoFocus
+          />
+          <button onClick={onSave} disabled={actionLoading}
+            style={{ background: 'var(--accent)', color: 'white' }}
+            className="px-3 py-1 rounded text-xs font-medium disabled:opacity-50">
+            Guardar
           </button>
-          <button
-            onClick={handleApprove}
-            disabled={actionLoading}
-            className="px-5 py-2 bg-emerald-500 text-zinc-950 font-mono text-sm font-bold rounded hover:bg-emerald-400 transition-colors disabled:opacity-50"
-          >
-            Aprobar acta
+          <button onClick={onCancel}
+            style={{ color: 'var(--text-muted)' }}
+            className="px-2 py-1 text-xs">
+            Cancelar
           </button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-4">
+          <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)', minWidth: '3rem', textAlign: 'right' }}
+            className="text-sm font-medium">
+            {field.value ?? <span style={{ color: 'var(--text-muted)' }}>—</span>}
+          </span>
+          <span style={{ fontFamily: 'DM Mono, monospace', color: confidenceColor, fontSize: '11px', minWidth: '2.5rem', textAlign: 'right' }}>
+            {confPct}%
+          </span>
+          {canEdit && (
+            <button
+              onClick={e => { e.stopPropagation(); onEdit() }}
+              style={{ color: 'var(--accent)' }}
+              className="text-xs font-medium opacity-0 group-hover:opacity-100 hover:underline w-12 text-right">
+              Corregir
+            </button>
+          )}
         </div>
       )}
     </div>

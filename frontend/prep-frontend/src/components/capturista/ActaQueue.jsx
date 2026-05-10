@@ -10,6 +10,7 @@ export default function ActaQueue() {
   const navigate = useNavigate()
 
   const fetchQueue = async () => {
+    setLoading(true)
     try {
       const params = {}
       if (filter.queue) params.queue = filter.queue
@@ -26,48 +27,71 @@ export default function ActaQueue() {
   useEffect(() => { fetchQueue() }, [filter])
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-screen-xl mx-auto px-8 py-8 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="font-mono text-xl font-bold tracking-tight">Cola de actas</h1>
+        <div>
+          <h1 style={{ color: 'var(--text)' }} className="text-2xl font-semibold">Cola de actas</h1>
+          <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-1">
+            {actas.length} acta{actas.length !== 1 ? 's' : ''} con los filtros actuales
+          </p>
+        </div>
         <div className="flex gap-3">
-          <select
-            value={filter.queue}
-            onChange={e => setFilter(f => ({ ...f, queue: e.target.value }))}
-            className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="">Toda la cola</option>
-            <option value="High">Alta prioridad</option>
-            <option value="Standard">Estándar</option>
-          </select>
-          <select
-            value={filter.status}
-            onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
-            className="bg-zinc-900 border border-zinc-700 rounded px-3 py-1.5 text-sm font-mono text-zinc-300 focus:outline-none focus:border-emerald-500"
-          >
-            <option value="">Todos los estados</option>
-            <option value="Pending">Pendiente</option>
-            <option value="InReview">En revisión</option>
-            <option value="Approved">Aprobada</option>
-            <option value="Rejected">Rechazada</option>
-          </select>
+          {[
+            {
+              value: filter.queue,
+              onChange: v => setFilter(f => ({ ...f, queue: v })),
+              options: [
+                { value: '', label: 'Toda la cola' },
+                { value: 'High', label: 'Alta prioridad' },
+                { value: 'Standard', label: 'Estándar' },
+              ]
+            },
+            {
+              value: filter.status,
+              onChange: v => setFilter(f => ({ ...f, status: v })),
+              options: [
+                { value: '', label: 'Todos los estados' },
+                { value: 'Pending', label: 'Pendiente' },
+                { value: 'InReview', label: 'En revisión' },
+                { value: 'Approved', label: 'Aprobada' },
+                { value: 'Rejected', label: 'Rechazada' },
+              ]
+            }
+          ].map((sel, i) => (
+            <select key={i} value={sel.value}
+              onChange={e => sel.onChange(e.target.value)}
+              style={{
+                background: 'var(--surface)',
+                border: '1px solid var(--border)',
+                color: 'var(--text)'
+              }}
+              className="text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+              {sel.options.map(o => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          ))}
         </div>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center h-48">
-          <span className="font-mono text-zinc-500 animate-pulse">Cargando cola...</span>
+          <span style={{ color: 'var(--text-muted)' }} className="text-sm animate-pulse">Cargando...</span>
         </div>
       ) : actas.length === 0 ? (
-        <div className="border border-zinc-800 rounded-lg p-12 text-center">
-          <p className="font-mono text-zinc-500">No hay actas con estos filtros</p>
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          className="rounded-xl p-16 text-center">
+          <p style={{ color: 'var(--text-muted)' }} className="text-sm">No hay actas con estos filtros</p>
         </div>
       ) : (
-        <div className="border border-zinc-800 rounded-lg overflow-hidden">
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}
+          className="rounded-xl overflow-hidden">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-800 bg-zinc-900">
-                {['ID', 'Entidad', 'Municipio', 'Sección', 'Cola', 'Estado', 'Confianza', 'Aritmética', ''].map(h => (
-                  <th key={h} className="px-4 py-3 text-left text-xs font-mono text-zinc-500 uppercase tracking-widest">
+              <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
+                {['#', 'Entidad', 'Municipio', 'Sección', 'Cola', 'Estado', 'Confianza', 'Aritmética', ''].map(h => (
+                  <th key={h} style={{ color: 'var(--text-muted)' }}
+                    className="px-5 py-3 text-left text-xs font-medium uppercase tracking-widest">
                     {h}
                   </th>
                 ))}
@@ -75,30 +99,36 @@ export default function ActaQueue() {
             </thead>
             <tbody>
               {actas.map((acta, i) => (
-                <tr
-                  key={acta.id}
-                  className={`border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors cursor-pointer ${
-                    i % 2 === 0 ? 'bg-zinc-950' : 'bg-zinc-900/30'
-                  }`}
+                <tr key={acta.id}
                   onClick={() => navigate(`/actas/${acta.id}`)}
-                >
-                  <td className="px-4 py-3 font-mono text-xs text-zinc-400">#{acta.id}</td>
-                  <td className="px-4 py-3 font-mono text-sm text-zinc-200">{acta.entity || '—'}</td>
-                  <td className="px-4 py-3 font-mono text-sm text-zinc-200">{acta.municipality || '—'}</td>
-                  <td className="px-4 py-3 font-mono text-sm text-zinc-400">{acta.section || '—'}</td>
-                  <td className="px-4 py-3"><StatusBadge value={acta.assignedQueue} /></td>
-                  <td className="px-4 py-3"><StatusBadge value={acta.status} /></td>
-                  <td className="px-4 py-3 font-mono text-sm text-zinc-300">
+                  style={{ borderBottom: '1px solid var(--border)' }}
+                  className="hover:bg-[var(--surface-2)] transition-colors cursor-pointer">
+                  <td style={{ color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}
+                    className="px-5 py-3.5 text-sm">{acta.id}</td>
+                  <td style={{ color: 'var(--text)' }} className="px-5 py-3.5 text-sm font-medium">
+                    {acta.entity || '—'}
+                  </td>
+                  <td style={{ color: 'var(--text)' }} className="px-5 py-3.5 text-sm">
+                    {acta.municipality || '—'}
+                  </td>
+                  <td style={{ color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}
+                    className="px-5 py-3.5 text-sm">{acta.section || '—'}</td>
+                  <td className="px-5 py-3.5"><StatusBadge value={acta.assignedQueue} /></td>
+                  <td className="px-5 py-3.5"><StatusBadge value={acta.status} /></td>
+                  <td style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}
+                    className="px-5 py-3.5 text-sm">
                     {(acta.globalConfidence * 100).toFixed(0)}%
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-5 py-3.5">
                     {acta.arithmeticValidationOk
-                      ? <span className="text-emerald-400 font-mono text-xs">✓ OK</span>
-                      : <span className="text-red-400 font-mono text-xs">✗ Error</span>
+                      ? <span style={{ color: '#15803d' }} className="text-sm font-medium">✓ OK</span>
+                      : <span style={{ color: '#b91c1c' }} className="text-sm font-medium">✗ Error</span>
                     }
                   </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs font-mono text-zinc-500">Ver →</span>
+                  <td className="px-5 py-3.5">
+                    <span style={{ color: 'var(--accent)' }} className="text-sm font-medium">
+                      Revisar →
+                    </span>
                   </td>
                 </tr>
               ))}

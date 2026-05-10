@@ -1,21 +1,22 @@
 const config = {
-  Pending:  { label: 'Pendiente',   classes: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' },
-  InReview: { label: 'En revisión', classes: 'bg-blue-400/10 text-blue-400 border-blue-400/20' },
-  Approved: { label: 'Aprobada',    classes: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
-  Rejected: { label: 'Rechazada',   classes: 'bg-red-400/10 text-red-400 border-red-400/20' },
-  High:     { label: 'Alta',        classes: 'bg-red-400/10 text-red-400 border-red-400/20' },
-  Standard: { label: 'Estándar',    classes: 'bg-zinc-400/10 text-zinc-400 border-zinc-400/20' },
-  Low:      { label: 'Baja',        classes: 'bg-red-400/10 text-red-400 border-red-400/20' },
-  Medium:   { label: 'Media',       classes: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20' },
-  High_conf:{ label: 'Alta',        classes: 'bg-emerald-400/10 text-emerald-400 border-emerald-400/20' },
+  Pending:   { label: 'Pendiente',      bg: '#fef9c3', text: '#854d0e', border: '#fde047' },
+  InReview:  { label: 'En revisión',    bg: '#dbeafe', text: '#1e40af', border: '#93c5fd' },
+  Approved:  { label: 'Aprobada',       bg: '#dcfce7', text: '#166534', border: '#86efac' },
+  Rejected:  { label: 'Rechazada',      bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' },
+  High:      { label: 'Alta prioridad', bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' },
+  Standard:  { label: 'Estándar',       bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' },
+  Low:       { label: 'Baja',           bg: '#fee2e2', text: '#991b1b', border: '#fca5a5' },
+  Medium:    { label: 'Media',          bg: '#fef9c3', text: '#854d0e', border: '#fde047' },
+  High_conf: { label: 'Alta',           bg: '#dcfce7', text: '#166534', border: '#86efac' },
 }
 
 export default function StatusBadge({ value, type = 'status' }) {
   const key = type === 'confidence' && value === 'High' ? 'High_conf' : value
-  const { label, classes } = config[key] ?? { label: value, classes: 'bg-zinc-400/10 text-zinc-400 border-zinc-400/20' }
+  const c = config[key] ?? { label: value, bg: '#f1f5f9', text: '#475569', border: '#cbd5e1' }
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded border text-xs font-mono ${classes}`}>
-      {label}
+    <span style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}` }}
+      className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium">
+      {c.label}
     </span>
   )
 }
