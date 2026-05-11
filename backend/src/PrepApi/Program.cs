@@ -20,6 +20,7 @@ builder.Services.AddScoped<IDocumentIntelligenceService, DocumentIntelligenceSer
 builder.Services.AddScoped<IValidationService, ValidationService>();
 builder.Services.AddScoped<IQueueService, QueueService>();
 builder.Services.AddScoped<IActaOrchestrationService, ActaOrchestrationService>();
+builder.Services.AddScoped<IPublicResultsService, PublicResultsService>();
 
 builder.Services.AddControllers();
 
