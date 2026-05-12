@@ -73,12 +73,12 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendPolicy", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://localhost:5174", "https://pre-parando-i-ayudando.vercel.app", "https://pre-parando-i-ayudando-f1em.vercel.app/")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
     });
 });
-
 
 var app = builder.Build();
 
