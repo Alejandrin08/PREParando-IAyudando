@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Mvc;
 using PrepApi.Services;
 using PrepApi.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 
 namespace PrepApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [AllowAnonymous]
     public class PublicResultsController : ControllerBase
     {
         private readonly IPublicResultsService _service;

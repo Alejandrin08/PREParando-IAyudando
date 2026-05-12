@@ -7,5 +7,7 @@ namespace PrepApi.DTOs
         public int TotalDocuments { get; set; }
         public int SucceededDocuments { get; set; }
         public int FailedDocuments { get; set; }
+        public int SkippedDocuments { get; set; }
+        public List<string> SkippedNames { get; set; } = new();
     }
 }

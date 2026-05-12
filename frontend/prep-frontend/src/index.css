@@ -22,3 +22,7 @@ body {
   background-color: var(--bg);
   color: var(--text);
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

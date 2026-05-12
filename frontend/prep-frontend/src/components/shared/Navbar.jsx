@@ -1,48 +1,131 @@
-import { NavLink } from 'react-router-dom'
+import { useState } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { useTheme } from '../../context/ThemeContext'
+import UploadModal from '../UploadModal'
 
 export default function Navbar() {
+  const { user, logout } = useAuth()
+  const { mode, toggleTheme, increaseFontSize, decreaseFontSize } = useTheme()
+  const [showUpload, setShowUpload] = useState(false)
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login')
+  }
+
   return (
-    <nav style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)' }}
-      className="px-8 py-0 sticky top-0 z-50">
-      <div className="max-w-screen-xl mx-auto flex items-center justify-between h-14">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div style={{ background: 'var(--accent)' }} className="w-6 h-6 rounded flex items-center justify-center">
-              <span className="text-white text-xs font-bold">P</span>
+    <>
+      <nav style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div className="max-w-screen-xl mx-auto px-6 h-14 flex items-center justify-between">
+
+          <div className="flex items-center gap-3">
+            <div style={{ background: 'var(--accent)' }}
+              className="w-6 h-6 rounded flex items-center justify-center">
+              <span style={{ fontFamily: 'DM Mono, monospace' }} className="text-white text-xs font-bold">P</span>
             </div>
-            <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}
-              className="text-sm font-medium tracking-tight">
-              PREP <span style={{ color: 'var(--text-muted)' }}>· Sistema de Captura</span>
+            <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)' }} className="text-sm font-medium">
+              PREP <span style={{ color: 'var(--text-muted)' }}>· Captura</span>
             </span>
           </div>
-        </div>
-        <div className="flex items-center gap-1">
-          {[
-            { to: '/dashboard', label: 'Dashboard' },
-            { to: '/queue', label: 'Cola de actas' },
-          ].map(({ to, label }) => (
-            <NavLink key={to} to={to}
-              className={({ isActive }) =>
-                `px-4 py-4 text-sm font-medium transition-colors border-b-2 ${isActive
-                  ? 'border-[var(--accent)] text-[var(--accent)]'
-                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
-                }`
-              }
-            >
-              {label}
-            </NavLink>
-          ))}
-        </div>
-        <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full">
-          <div style={{ background: 'var(--accent)' }} className="w-5 h-5 rounded-full flex items-center justify-center">
-            <span className="text-white text-xs font-bold">C</span>
+
+          <div className="flex items-center gap-1">
+            {[
+              { to: '/dashboard', label: 'Dashboard' },
+              { to: '/queue', label: 'Cola de actas' },
+            ].map(({ to, label }) => (
+              <NavLink key={to} to={to}
+                style={({ isActive }) => ({
+                  color: isActive ? 'var(--accent)' : 'var(--text-muted)',
+                  borderBottom: isActive ? '2px solid var(--accent)' : '2px solid transparent',
+                  padding: '0 1rem',
+                  height: '3.5rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  fontSize: '0.875rem',
+                  fontWeight: 500,
+                  transition: 'color 0.2s'
+                })}>
+                {label}
+              </NavLink>
+            ))}
+
+            {user?.role === 'Admin' && (
+              <button
+                onClick={() => setShowUpload(true)}
+                style={{
+                  marginLeft: '0.5rem',
+                  background: 'var(--accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  padding: '0.4rem 0.875rem',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.375rem'
+                }}>
+                ↑ Subir actas
+              </button>
+            )}
           </div>
-          <span style={{ fontFamily: 'DM Mono, monospace' }} className="text-xs text-[var(--text-muted)]">
-            capturista_01
-          </span>
+
+          <div className="flex items-center gap-2">
+            <div style={{ border: '1px solid var(--border)', background: 'var(--surface-2)', borderRadius: '0.5rem', overflow: 'hidden', display: 'flex' }}>
+              <button onClick={decreaseFontSize}
+                style={{ color: 'var(--text-muted)', padding: '0.3rem 0.5rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                A−
+              </button>
+              <div style={{ width: '1px', background: 'var(--border)' }} />
+              <button onClick={increaseFontSize}
+                style={{ color: 'var(--text-muted)', padding: '0.3rem 0.5rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>
+                A+
+              </button>
+            </div>
+
+            <button onClick={toggleTheme}
+              style={{
+                border: '1px solid var(--border)',
+                background: 'var(--surface-2)',
+                color: 'var(--text-muted)',
+                padding: '0.3rem 0.625rem',
+                borderRadius: '0.5rem',
+                fontSize: '0.75rem',
+                cursor: 'pointer'
+              }}>
+              {mode === 'light' ? '◑' : '◐'}
+            </button>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderLeft: '1px solid var(--border)', paddingLeft: '0.75rem' }}>
+              <div style={{ textAlign: 'right' }}>
+                <p style={{ color: 'var(--text)', fontSize: '0.775rem', fontWeight: 500, lineHeight: 1.2 }}>
+                  {user?.fullName}
+                </p>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', lineHeight: 1.2 }}>
+                  {user?.role}
+                </p>
+              </div>
+              <button onClick={handleLogout}
+                style={{
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface-2)',
+                  color: 'var(--text-muted)',
+                  padding: '0.3rem 0.625rem',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer'
+                }}>
+                Salir
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {showUpload && <UploadModal onClose={() => setShowUpload(false)} />}
+    </>
   )
 }

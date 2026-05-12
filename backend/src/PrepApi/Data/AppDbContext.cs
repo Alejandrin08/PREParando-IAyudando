@@ -1,9 +1,10 @@
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using PrepApi.Models;
 
 namespace PrepApi.Data
 {
-    public class AppDbContext : DbContext
+    public class AppDbContext : IdentityDbContext<ApplicationUser>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
@@ -13,6 +14,8 @@ namespace PrepApi.Data
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
             modelBuilder.Entity<Acta>(entity =>
             {
                 entity.HasKey(a => a.Id);
@@ -29,7 +32,6 @@ namespace PrepApi.Data
                 entity.Property(f => f.ConfidenceLevel).HasConversion<string>();
                 entity.HasIndex(f => f.ActaId);
                 entity.HasIndex(f => f.FieldName);
-
                 entity.HasOne(f => f.Acta)
                       .WithMany(a => a.Fields)
                       .HasForeignKey(f => f.ActaId)
@@ -40,7 +42,6 @@ namespace PrepApi.Data
             {
                 entity.HasKey(v => v.Id);
                 entity.HasIndex(v => v.ActaId);
-
                 entity.HasOne(v => v.Acta)
                       .WithMany(a => a.Validations)
                       .HasForeignKey(v => v.ActaId)

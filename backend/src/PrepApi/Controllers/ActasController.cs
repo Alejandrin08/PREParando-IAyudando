@@ -1,12 +1,14 @@
 using Microsoft.AspNetCore.Mvc;
 using PrepApi.DTOs;
 using PrepApi.Services;
+using Microsoft.AspNetCore.Authorization;
 using PrepApi.Services.Interfaces;
 
 namespace PrepApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize(Roles = "Admin,Capturista")]
     public class ActasController : ControllerBase
     {
         private readonly IActaOrchestrationService _orchestration;
@@ -17,6 +19,7 @@ namespace PrepApi.Controllers
         }
 
         [HttpPost("batch")]
+        [Authorize(Roles = "Admin")]
         [RequestSizeLimit(100_000_000)]
         public async Task<IActionResult> UploadBatch(IFormFileCollection images)
         {

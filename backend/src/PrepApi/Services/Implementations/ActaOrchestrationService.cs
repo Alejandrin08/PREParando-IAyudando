@@ -14,16 +14,17 @@ namespace PrepApi.Services.Implementations
         private readonly IValidationService _validationService;
         private readonly IQueueService _queueService;
         private readonly ILogger<ActaOrchestrationService> _logger;
+        private readonly IServiceScopeFactory _scopeFactory;
 
         public ActaOrchestrationService(
-            AppDbContext db,
+            IServiceScopeFactory scopeFactory,
             IBlobStorageService blobService,
             IDocumentIntelligenceService diService,
             IValidationService validationService,
             IQueueService queueService,
             ILogger<ActaOrchestrationService> logger)
         {
-            _db = db;
+            _scopeFactory = scopeFactory;
             _blobService = blobService;
             _diService = diService;
             _validationService = validationService;
@@ -35,68 +36,97 @@ namespace PrepApi.Services.Implementations
         {
             var uploadedCount = 0;
             var failedCount = 0;
+            var skippedCount = 0;
+            var skippedNames = new List<string>();
+            var lockObj = new object();
 
-            foreach (var image in images)
+            const int batchSize = 5;
+            var batches = images.Chunk(batchSize);
+
+            foreach (var batch in batches)
             {
-                try
+                var tasks = batch.Select(async image =>
                 {
-                    using var ms = new MemoryStream();
-                    await image.CopyToAsync(ms);
-                    var bytes = ms.ToArray();
-
-                    await _blobService.UploadActaAsync(image.FileName, bytes, image.ContentType);
-                    var extraction = await _diService.ExtractActaAsync(image.FileName, bytes);
-                    var validations = _validationService.Validate(extraction);
-
-                    var queue = _queueService.AssignQueue(extraction, validations);
-
-                    var entityField = extraction.Fields.FirstOrDefault(f => f.Name == "entidad");
-                    var municipalityField = extraction.Fields.FirstOrDefault(f => f.Name == "municipio");
-                    var sectionField = extraction.Fields.FirstOrDefault(f => f.Name == "seccion");
-
-                    var acta = new Acta
+                    try
                     {
-                        ActaId = image.FileName,
-                        Entity = entityField?.Value ?? string.Empty,
-                        Municipality = municipalityField?.Value ?? string.Empty,
-                        Section = sectionField?.Value ?? string.Empty,
-                        GlobalConfidence = extraction.GlobalConfidence,
-                        ConfidenceLevel = extraction.GlobalLevel,
-                        ArithmeticValidationOk = validations.All(v => v.Passed),
-                        Status = "Pending",
-                        AssignedQueue = queue,
-                        IngestedAt = DateTime.UtcNow
-                    };
+                        var existsInBlob = await _blobService.ExistsAsync(image.FileName);
+                        var existsInDb = await _db.Actas.AnyAsync(a => a.ActaId == image.FileName);
 
-                    _db.Actas.Add(acta);
-                    await _db.SaveChangesAsync();
+                        if (existsInBlob || existsInDb)
+                        {
+                            lock (lockObj)
+                            {
+                                skippedCount++;
+                                skippedNames.Add(image.FileName);
+                            }
+                            _logger.LogWarning("Acta {FileName} already exists, skipping", image.FileName);
+                            return;
+                        }
 
-                    var actaFields = extraction.Fields.Select(f => new ActaField
+                        using var ms = new MemoryStream();
+                        await image.CopyToAsync(ms);
+                        var bytes = ms.ToArray();
+
+                        var uploadTask = _blobService.UploadActaAsync(image.FileName, bytes, image.ContentType);
+                        var extractTask = _diService.ExtractActaAsync(image.FileName, bytes);
+
+                        await Task.WhenAll(uploadTask, extractTask);
+
+                        var extraction = extractTask.Result;
+                        var validations = _validationService.Validate(extraction);
+                        var queue = _queueService.AssignQueue(extraction, validations);
+
+                        var entityField = extraction.Fields.FirstOrDefault(f => f.Name == "entidad");
+                        var municipalityField = extraction.Fields.FirstOrDefault(f => f.Name == "municipio");
+                        var sectionField = extraction.Fields.FirstOrDefault(f => f.Name == "seccion");
+
+                        var acta = new Acta
+                        {
+                            ActaId = image.FileName,
+                            Entity = entityField?.Value ?? string.Empty,
+                            Municipality = municipalityField?.Value ?? string.Empty,
+                            Section = sectionField?.Value ?? string.Empty,
+                            GlobalConfidence = extraction.GlobalConfidence,
+                            ConfidenceLevel = extraction.GlobalLevel,
+                            ArithmeticValidationOk = validations.All(v => v.Passed),
+                            Status = "Pending",
+                            AssignedQueue = queue,
+                            IngestedAt = DateTime.UtcNow
+                        };
+
+                        using var scope = _scopeFactory.CreateScope();
+                        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+                        db.Actas.Add(acta);
+                        await db.SaveChangesAsync();
+
+                        var actaFields = extraction.Fields.Select(f => new ActaField
+                        {
+                            ActaId = acta.Id,
+                            FieldName = f.Name,
+                            NumericValue = int.TryParse(f.Value, out var parsed) ? parsed : null,
+                            TextValue = int.TryParse(f.Value, out _) ? null : f.Value,
+                            Confidence = f.RawConfidence,
+                            ConfidenceLevel = f.Level,
+                            BoundingRegion = f.BoundingRegion
+                        }).ToList();
+
+                        db.ActaFields.AddRange(actaFields);
+                        validations.ForEach(v => v.ActaId = acta.Id);
+                        db.ActaValidations.AddRange(validations);
+                        await db.SaveChangesAsync();
+
+                        lock (lockObj) { uploadedCount++; }
+                        _logger.LogInformation("Acta {FileName} processed", image.FileName);
+                    }
+                    catch (Exception ex)
                     {
-                        ActaId = acta.Id,
-                        FieldName = f.Name,
-                        NumericValue = int.TryParse(f.Value, out var parsed) ? parsed : null,
-                        TextValue = int.TryParse(f.Value, out _) ? null : f.Value,
-                        Confidence = f.RawConfidence,
-                        ConfidenceLevel = f.Level,
-                        BoundingRegion = f.BoundingRegion
-                    }).ToList();
+                        lock (lockObj) { failedCount++; }
+                        _logger.LogError(ex, "Failed to process acta {FileName}", image.FileName);
+                    }
+                });
 
-                    _db.ActaFields.AddRange(actaFields);
-
-                    validations.ForEach(v => v.ActaId = acta.Id);
-                    _db.ActaValidations.AddRange(validations);
-
-                    await _db.SaveChangesAsync();
-
-                    uploadedCount++;
-                    _logger.LogInformation("Acta {FileName} processed and saved", image.FileName);
-                }
-                catch (Exception ex)
-                {
-                    failedCount++;
-                    _logger.LogError(ex, "Failed to process acta {FileName}", image.FileName);
-                }
+                await Task.WhenAll(tasks);
             }
 
             return new BatchStatusDto
@@ -105,13 +135,18 @@ namespace PrepApi.Services.Implementations
                 Status = failedCount == 0 ? "succeeded" : "partial",
                 TotalDocuments = images.Count,
                 SucceededDocuments = uploadedCount,
-                FailedDocuments = failedCount
+                FailedDocuments = failedCount,
+                SkippedDocuments = skippedCount,
+                SkippedNames = skippedNames
             };
         }
 
         public async Task<ActaResponseDto?> GetActaAsync(int id)
         {
-            var acta = await _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -121,7 +156,11 @@ namespace PrepApi.Services.Implementations
 
         public async Task<List<ActaResponseDto>> GetQueueAsync(string? queue, string? status)
         {
-            var query = _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var query = db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .AsQueryable();

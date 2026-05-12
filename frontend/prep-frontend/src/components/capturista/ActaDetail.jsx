@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { actasApi } from '../../services/api'
 import ActaViewer from './ActaViewer'
 import StatusBadge from '../shared/StatusBadge'
+import { useAuth } from '../../context/AuthContext'
 import { fieldLabels, validationLabels, partyIcons, fieldOrder } from '../../utils/labels'
 
 const isTotalField = name =>
@@ -20,7 +21,8 @@ export default function ActaDetail() {
   const [editingField, setEditingField] = useState(null)
   const [editValue, setEditValue] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
-  const capturista = 'capturista_01'
+  const { user } = useAuth()
+  const capturista = user?.email ?? 'unknown'
 
   const fetchActa = async () => {
     try {

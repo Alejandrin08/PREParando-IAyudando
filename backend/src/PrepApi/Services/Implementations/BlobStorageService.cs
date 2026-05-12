@@ -63,5 +63,11 @@ namespace PrepApi.Services.Implementations
             await blobClient.DeleteIfExistsAsync();
             _logger.LogInformation("Deleted acta {FileName} from blob storage", fileName);
         }
+
+        public async Task<bool> ExistsAsync(string fileName)
+        {
+            var blobClient = _containerClient.GetBlobClient(fileName);
+            return await blobClient.ExistsAsync();
+        }
     }
 }
