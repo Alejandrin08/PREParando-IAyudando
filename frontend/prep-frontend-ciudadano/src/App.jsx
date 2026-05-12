@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Home from './pages/Home'
 import Resultados from './pages/Resultados'
+import NotFound from './pages/NotFound'
 import { useEffect } from 'react'
 import { applyTheme } from './utils/theme'
 
@@ -18,7 +19,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/resultados" element={<Resultados />} />
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
     </BrowserRouter>
