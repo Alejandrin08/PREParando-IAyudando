@@ -74,7 +74,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("FrontendPolicy", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .SetIsOriginAllowed(origin =>
+                origin.StartsWith("https://pre-parando-i-ayudando")
+                || origin.StartsWith("http://localhost")
+            )
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
