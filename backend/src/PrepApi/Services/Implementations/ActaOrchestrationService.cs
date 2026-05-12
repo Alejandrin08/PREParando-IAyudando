@@ -49,8 +49,11 @@ namespace PrepApi.Services.Implementations
                 {
                     try
                     {
+                        using var scope = _scopeFactory.CreateScope();
+                        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
                         var existsInBlob = await _blobService.ExistsAsync(image.FileName);
-                        var existsInDb = await _db.Actas.AnyAsync(a => a.ActaId == image.FileName);
+                        var existsInDb = await db.Actas.AnyAsync(a => a.ActaId == image.FileName);
 
                         if (existsInBlob || existsInDb)
                         {
@@ -94,8 +97,6 @@ namespace PrepApi.Services.Implementations
                             IngestedAt = DateTime.UtcNow
                         };
 
-                        using var scope = _scopeFactory.CreateScope();
-                        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
                         db.Actas.Add(acta);
                         await db.SaveChangesAsync();
