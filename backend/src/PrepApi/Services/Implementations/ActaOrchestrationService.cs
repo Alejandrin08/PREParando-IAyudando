@@ -8,7 +8,6 @@ namespace PrepApi.Services.Implementations
 {
     public class ActaOrchestrationService : IActaOrchestrationService
     {
-        private readonly AppDbContext _db;
         private readonly IBlobStorageService _blobService;
         private readonly IDocumentIntelligenceService _diService;
         private readonly IValidationService _validationService;
@@ -182,7 +181,10 @@ namespace PrepApi.Services.Implementations
 
         public async Task<ActaResponseDto?> ApproveActaAsync(int id, string approvedBy)
         {
-            var acta = await _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -193,13 +195,16 @@ namespace PrepApi.Services.Implementations
             acta.ApprovedBy = approvedBy;
             acta.ApprovedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             return MapToDto(acta);
         }
 
         public async Task<ActaResponseDto?> CorrectFieldAsync(int id, CorrectFieldDto dto)
         {
-            var acta = await _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -239,19 +244,22 @@ namespace PrepApi.Services.Implementations
             var newValidations = _validationService.Validate(extraction);
             newValidations.ForEach(v => v.ActaId = acta.Id);
 
-            _db.ActaValidations.RemoveRange(acta.Validations);
-            _db.ActaValidations.AddRange(newValidations);
+            db.ActaValidations.RemoveRange(acta.Validations);
+            db.ActaValidations.AddRange(newValidations);
 
             acta.ArithmeticValidationOk = newValidations.All(v => v.Passed);
             acta.Status = "InReview";
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             return MapToDto(acta);
         }
 
         public async Task<ActaResponseDto?> RejectActaAsync(int id, string rejectedBy)
         {
-            var acta = await _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -262,13 +270,16 @@ namespace PrepApi.Services.Implementations
             acta.ApprovedBy = rejectedBy;
             acta.ApprovedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             return MapToDto(acta);
         }
 
         public async Task<DashboardDto> GetDashboardAsync()
         {
-            var actas = await _db.Actas.ToListAsync();
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var actas = await db.Actas.ToListAsync();
 
             return new DashboardDto
             {
