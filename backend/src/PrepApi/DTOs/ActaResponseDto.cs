@@ -15,6 +15,8 @@ namespace PrepApi.DTOs
         public DateTime IngestedAt { get; set; }
         public string? ApprovedBy { get; set; }
         public DateTime? ApprovedAt { get; set; }
+        public string? RejectionReason { get; set; }
+        public string? RejectionCategory { get; set; }
         public List<FieldResponseDto> Fields { get; set; } = new();
         public List<ValidationResponseDto> Validations { get; set; } = new();
         public string? ImageUrl { get; set; }
