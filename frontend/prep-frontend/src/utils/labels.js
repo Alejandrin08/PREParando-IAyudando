@@ -28,9 +28,13 @@ export const fieldLabels = {
 
 export const validationLabels = {
   SumOfVotesMatchesTotal: 'La suma de votos coincide con el total declarado',
+  SumOfVotesDoNotMatchesTotal: 'La suma de votos no coincide con el total declarado',
   TotalVotesMatchUrnas: 'El total de votos coincide con el conteo de urnas',
+  TotalVotesDoNotMatchUrnas: 'El total de votos no coincide con el conteo de urnas',
   PersonasVotaronMatchUrnas: 'Personas que votaron coinciden con votos en urnas',
+  PersonasVotaronDoNotMatchUrnas: 'Personas que votaron no coinciden con votos en urnas',
   TotalVotesDoNotExceedNominal: 'El total no excede la lista nominal',
+  TotalVotesExceedNominal: 'El total excede la lista nominal',
 }
 
 export const partyIcons = {
