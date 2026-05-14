@@ -31,7 +31,7 @@ namespace PrepApi.Services.Implementations
             if (existingUser != null)
                 throw new InvalidOperationException("A user with this email already exists.");
 
-            var validRoles = new[] { "Admin", "Capturista" };
+            var validRoles = new[] { "Admin", "Capturista", "Verificador" };
             if (!validRoles.Contains(dto.Role))
                 throw new InvalidOperationException($"Invalid role. Valid roles: {string.Join(", ", validRoles)}");
 

@@ -21,7 +21,20 @@ export const actasApi = {
   getQueue: (params) => api.get('/actas/queue', { params }),
   getActa: (id) => api.get(`/actas/${id}`),
   getDashboard: () => api.get('/actas/dashboard'),
-  approveActa: (id, approvedBy) => api.put(`/actas/${id}/approve`, { approvedBy }),
-  correctField: (id, data) => api.put(`/actas/${id}/correct`, data),
-  rejectActa: (id, approvedBy) => api.put(`/actas/${id}/reject`, { approvedBy }),
+
+  approveActa: (id, approvedBy) =>
+    api.put(`/actas/${id}/approve`, { approvedBy }),
+
+  correctField: (id, data) =>
+    api.put(`/actas/${id}/correct`, data),
+
+  rejectActa: (id, approvedBy) =>
+    api.put(`/actas/${id}/reject`, { approvedBy }),
+
+  getVerificadorQueue: (params) =>
+    api.get('/actas/verificador-queue', { params }),
+  verifyApprove: (id, verifiedBy, partialReason = null) =>
+    api.put(`/actas/${id}/verify-approve`, { approvedBy: verifiedBy, partialReason }),
+  verifyReject: (id, data) =>
+    api.put(`/actas/${id}/verify-reject`, data),
 }
