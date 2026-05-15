@@ -11,5 +11,9 @@ namespace PrepApi.Services.Interfaces
         Task<ActaResponseDto?> CorrectFieldAsync(int id, CorrectFieldDto dto);
         Task<ActaResponseDto?> RejectActaAsync(int id, string rejectedBy);
         Task<DashboardDto> GetDashboardAsync();
+        Task<ActaResponseDto?> RejectByCapturistaAsync(int id, string rejectedBy);
+        Task<ActaResponseDto?> VerifyApproveAsync(int id, string verifiedBy);
+        Task<ActaResponseDto?> VerifyRejectAsync(int id, VerifyActaDto dto);
+        Task<List<ActaResponseDto>> GetVerificadorQueueAsync(string? status);
     }
 }

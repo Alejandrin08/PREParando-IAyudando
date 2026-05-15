@@ -199,6 +199,10 @@ namespace PrepApi.Services.Implementations
                 "Rejected" => ("Incidencia documentada",
                     ResolveRejectionDetail(acta)),
 
+                "RejectedByCapturista" => ("En verificación",
+                    "Esta acta fue enviada a un proceso de verificación adicional. " +
+                    "Los datos se publicarán una vez confirmados por el equipo de verificación."),
+
                 _ => ("Estado desconocido", null)
             };
         }

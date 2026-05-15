@@ -8,7 +8,7 @@ namespace PrepApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin,Capturista")]
+    [Authorize(Roles = "Admin,Capturista,Verificador")]
     public class ActasController : ControllerBase
     {
         private readonly IActaOrchestrationService _orchestration;
@@ -81,14 +81,47 @@ namespace PrepApi.Controllers
         }
 
         [HttpPut("{id:int}/reject")]
-        public async Task<IActionResult> RejectActa(
-            int id,
-            [FromBody] ApproveActaDto dto)
+        [Authorize(Roles = "Admin,Capturista")]
+        public async Task<IActionResult> RejectActa(int id, [FromBody] ApproveActaDto dto)
         {
             if (string.IsNullOrEmpty(dto.ApprovedBy))
                 return BadRequest("RejectedBy is required");
 
-            var acta = await _orchestration.RejectActaAsync(id, dto.ApprovedBy);
+            var acta = await _orchestration.RejectByCapturistaAsync(id, dto.ApprovedBy);
+            if (acta == null) return NotFound();
+            return Ok(acta);
+        }
+
+        [HttpGet("verificador-queue")]
+        [Authorize(Roles = "Admin,Verificador")]
+        public async Task<IActionResult> GetVerificadorQueue([FromQuery] string? status)
+        {
+            var actas = await _orchestration.GetVerificadorQueueAsync(status);
+            return Ok(actas);
+        }
+
+        [HttpPut("{id:int}/verify-approve")]
+        [Authorize(Roles = "Admin,Verificador")]
+        public async Task<IActionResult> VerifyApprove(int id, [FromBody] ApproveActaDto dto)
+        {
+            if (string.IsNullOrEmpty(dto.ApprovedBy))
+                return BadRequest("VerifiedBy is required");
+
+            var acta = await _orchestration.VerifyApproveAsync(id, dto.ApprovedBy);
+            if (acta == null) return NotFound();
+            return Ok(acta);
+        }
+
+        [HttpPut("{id:int}/verify-reject")]
+        [Authorize(Roles = "Admin,Verificador")]
+        public async Task<IActionResult> VerifyReject(int id, [FromBody] VerifyActaDto dto)
+        {
+            if (string.IsNullOrEmpty(dto.VerifiedBy))
+                return BadRequest("VerifiedBy is required");
+            if (string.IsNullOrEmpty(dto.RejectionReason) || string.IsNullOrEmpty(dto.RejectionCategory))
+                return BadRequest("RejectionReason and RejectionCategory are required");
+
+            var acta = await _orchestration.VerifyRejectAsync(id, dto);
             if (acta == null) return NotFound();
             return Ok(acta);
         }

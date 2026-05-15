@@ -296,6 +296,96 @@ namespace PrepApi.Services.Implementations
             };
         }
 
+        public async Task<ActaResponseDto?> RejectByCapturistaAsync(int id, string rejectedBy)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (acta == null) return null;
+
+            acta.Status = "RejectedByCapturista";
+            acta.ApprovedBy = rejectedBy;
+            acta.ApprovedAt = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+            return MapToDto(acta);
+        }
+
+        public async Task<ActaResponseDto?> VerifyApproveAsync(int id, string verifiedBy)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (acta == null) return null;
+
+            acta.Status = "Approved";
+            acta.ApprovedBy = verifiedBy;
+            acta.ApprovedAt = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+            return MapToDto(acta);
+        }
+
+        public async Task<ActaResponseDto?> VerifyRejectAsync(int id, VerifyActaDto dto)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (acta == null) return null;
+
+            acta.Status = "Rejected";
+            acta.ApprovedBy = dto.VerifiedBy;
+            acta.ApprovedAt = DateTime.UtcNow;
+            acta.RejectionReason = dto.RejectionReason;
+            acta.RejectionCategory = dto.RejectionCategory;
+
+            if (dto.RejectionCategory == "NoContabilizada")
+            {
+                foreach (var field in acta.Fields
+                    .Where(f => !new[] { "entidad", "municipio", "seccion" }.Contains(f.FieldName)))
+                {
+                    field.NumericValue = null;
+                    field.TextValue = null;
+                }
+            }
+
+            await db.SaveChangesAsync();
+            return MapToDto(acta);
+        }
+
+        public async Task<List<ActaResponseDto>> GetVerificadorQueueAsync(string? status)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var query = db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .Where(a => a.Status == "RejectedByCapturista" || a.Status == "InReviewByVerificador")
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(a => a.Status == status);
+
+            var actas = await query.OrderBy(a => a.IngestedAt).ToListAsync();
+            return actas.Select(MapToDto).ToList();
+        }
+
         private static ActaResponseDto MapToDto(Acta acta) => new()
         {
             Id = acta.Id,
@@ -311,6 +401,8 @@ namespace PrepApi.Services.Implementations
             IngestedAt = acta.IngestedAt,
             ApprovedBy = acta.ApprovedBy,
             ApprovedAt = acta.ApprovedAt,
+            RejectionReason = acta.RejectionReason,
+            RejectionCategory = acta.RejectionCategory,
             ImageUrl = $"https://prepactasstorage.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
             Fields = acta.Fields.Select(f => new FieldResponseDto
             {
