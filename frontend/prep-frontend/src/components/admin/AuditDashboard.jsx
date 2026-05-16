@@ -138,78 +138,48 @@ function StatChip({ label, value, sub, color }) {
 const NO_CONT_COLORS = ['#c0392b', '#e74c3c', '#f1948a']
 const CONT_COLORS = ['#0891b2', '#06b6d4', '#67e8f9']
 
+
 function RechazadasChart({ rows }) {
   if (!rows.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Sin datos</p>
 
-  // Conteos por categoría + motivo
-  const noCont = Object.fromEntries(Object.keys(MOTIVOS_NO_CONT).map(k => [k, 0]))
-  const cont = Object.fromEntries(Object.keys(MOTIVOS_CONT).map(k => [k, 0]))
+  const counts = Object.fromEntries(Object.keys(MOTIVOS_NO_CONT).map(k => [k, 0]))
+  let sinMotivo = 0
 
   rows.forEach(r => {
-    if (r.rejectionCategory === 'NoContabilizada' && noCont[r.rejectionReason] !== undefined)
-      noCont[r.rejectionReason]++
-    if (r.rejectionCategory === 'Contabilizada' && cont[r.rejectionReason] !== undefined)
-      cont[r.rejectionReason]++
+    if (counts[r.rejectionReason] !== undefined) counts[r.rejectionReason]++
+    else sinMotivo++
   })
 
-  const totalNC = Object.values(noCont).reduce((a, b) => a + b, 0)
-  const totalC = Object.values(cont).reduce((a, b) => a + b, 0)
-  const grand = totalNC + totalC || 1
-
-  const renderGroup = (label, counts, labels, colors, total) => {
-    const entries = Object.entries(counts)
-    return (
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
-          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
-            {fmt(total)} · {pct(total, grand)}% del total
-          </span>
-        </div>
-        {/* Stacked bar */}
-        <div style={{ display: 'flex', height: 14, borderRadius: 99, overflow: 'hidden', background: 'var(--surface-2)' }}>
-          {entries.map(([key, count], i) => (
-            <div key={key}
-              style={{ width: `${pct(count, grand)}%`, background: colors[i], transition: 'width 0.5s ease', minWidth: count > 0 ? 2 : 0 }}
-              title={`${labels[key]}: ${fmt(count)}`}
-            />
-          ))}
-        </div>
-        {/* Legend inline */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 6 }}>
-          {entries.map(([key, count], i) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: colors[i], flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{labels[key]} <strong style={{ color: 'var(--text)' }}>{fmt(count)}</strong></span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  const total = rows.length || 1
+  const colors = { ExcedeLN: '#c0392b', TodosIlegibles: '#e74c3c', SinActa: '#f1948a' }
 
   return (
-    <div>
-      {renderGroup('No contabilizadas', noCont, MOTIVOS_NO_CONT, NO_CONT_COLORS, totalNC)}
-      {renderGroup('Contabilizadas', cont, MOTIVOS_CONT, CONT_COLORS, totalC)}
-      {/* Proportional overview bar */}
-      <div style={{ marginTop: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Proporción general</span>
-        </div>
-        <div style={{ display: 'flex', height: 20, borderRadius: 8, overflow: 'hidden' }}>
-          <div style={{ width: `${pct(totalNC, grand)}%`, background: '#c0392b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {totalNC > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{pct(totalNC, grand)}%</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {Object.entries(counts).map(([key, count]) => (
+        <div key={key}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{MOTIVOS_NO_CONT[key]}</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: colors[key], fontWeight: 700 }}>{fmt(count)}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{pct(count, total)}%</span>
+            </div>
           </div>
-          <div style={{ width: `${pct(totalC, grand)}%`, background: '#0891b2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {totalC > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{pct(totalC, grand)}%</span>}
+          <div style={{ height: 10, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(count / total) * 100}%`, background: colors[key], borderRadius: 99, transition: 'width 0.5s ease' }} />
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ fontSize: 10, color: '#c0392b', fontWeight: 600 }}>No contabilizadas</span>
-          <span style={{ fontSize: 10, color: '#0891b2', fontWeight: 600 }}>Contabilizadas</span>
+      ))}
+      {sinMotivo > 0 && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Sin motivo registrado</span>
+            <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>{fmt(sinMotivo)}</span>
+          </div>
+          <div style={{ height: 10, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(sinMotivo / total) * 100}%`, background: 'var(--border)', borderRadius: 99 }} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -472,8 +442,12 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
                 <StatChip label="Total rechazadas" value={fmt(withRejection.length)} color="#a32d2d" sub="con motivo registrado" />
-                <StatChip label="No contabilizadas" value={fmt(rejNC)} color="#c0392b" sub={`${pct(rejNC, withRejection.length)}%`} />
-                <StatChip label="Contabilizadas" value={fmt(rejC)} color="#0891b2" sub={`${pct(rejC, withRejection.length)}%`} />
+                {Object.entries(MOTIVOS_NO_CONT).map(([key, label]) => {
+                  const count = withRejection.filter(r => r.rejectionReason === key).length
+                  return (
+                    <StatChip key={key} label={label} value={fmt(count)} sub={`${pct(count, withRejection.length)}%`} />
+                  )
+                })}
               </div>
               <RechazadasChart rows={withRejection} />
             </>
