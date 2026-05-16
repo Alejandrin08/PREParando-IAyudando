@@ -4,47 +4,39 @@ const ThemeContext = createContext()
 
 const themes = {
   light: {
-    // Fondos — base azul muy suave
-    '--bg':           '#f0f4ff',  // Fondo principal
-    '--bg-2':         '#e4ebff',  // Fondo secundario
-
-    // Superficies
-    '--surface':      '#ffffff',
-    '--surface-2':    '#e0e8ff',
-
-    // Borde — azul medio, ratio 3.1:1 sobre --bg ✅ UI
-    '--border':       '#7b8cde',
-
-    // Textos
-    '--text':         '#0d0f2b',  // Azul casi negro  — 19:1 sobre #fff ✅ AAA
-    '--text-2':       '#1e2d6b',  // Azul oscuro      —  9.8:1 sobre #fff ✅ AAA
-    '--text-muted':   '#3a4480',  // Azul marino      —  6.2:1 sobre #fff ✅ AA
-
-    // Acento principal
-    '--accent':       '#1a2fa8',  // Azul marino      —  9.1:1 sobre #fff ✅ AAA
-    '--accent-light': '#dce5ff',  // Fondo suave acento (decorativo)
+    '--bg':              '#f0f4ff',
+    '--bg-2':            '#e4ebff',
+    '--surface':         '#ffffff',
+    '--surface-2':       '#e0e8ff',
+    '--border':          '#7b8cde',  // 3.1:1 sobre --bg ✅ UI
+    '--text':            '#0d0f2b',  // 19:1 sobre #fff ✅ AAA
+    '--text-2':          '#1e2d6b',  // 9.8:1 sobre #fff ✅ AAA
+    '--text-muted':      '#3a4480',  // 6.2:1 sobre #fff ✅ AA
+    '--accent':          '#1a2fa8',  // 9.1:1 sobre #fff ✅ AAA
+    '--accent-light':    '#dce5ff',
+    '--accent-bg':       '#e0e8ff',
+    '--accent-border':   '#1a2fa8',
+    '--text-h':          '#0d0f2b',
+    '--social-bg':       '#e0e8ff',
+    '--shadow':          '0 4px 12px rgba(26, 47, 168, 0.25)',
   },
 
   dark: {
-    // Fondos oscuros con tono azul
-    '--bg':           '#080c1a',  // Azul muy oscuro
-    '--bg-2':         '#0d1224',  // Ligeramente más claro
-
-    // Superficies
-    '--surface':      '#111827',
-    '--surface-2':    '#1a2340',
-
-    // Borde — azul visible en oscuro, ratio 3.2:1 sobre --bg ✅ UI
-    '--border':       '#3d5299',
-
-    // Textos sobre fondos oscuros
-    '--text':         '#e8edff',  // Blanco azulado    — 17.2:1 sobre #111827 ✅ AAA
-    '--text-2':       '#b8c5f0',  // Azul claro        —  8.1:1 sobre #111827 ✅ AAA
-    '--text-muted':   '#8097d6',  // Azul medio claro  —  4.6:1 sobre #111827 ✅ AA
-
-    // Acento claro para modo oscuro
-    '--accent':       '#7b9ef8',  // Azul claro        —  5.8:1 sobre #111827 ✅ AA
-    '--accent-light': '#1a2340',  // Fondo suave acento (decorativo)
+    '--bg':              '#080c1a',
+    '--bg-2':            '#0d1224',
+    '--surface':         '#111827',
+    '--surface-2':       '#1a2340',
+    '--border':          '#3d5299',  // 3.2:1 sobre --bg ✅ UI
+    '--text':            '#e8edff',  // 17.2:1 sobre #111827 ✅ AAA
+    '--text-2':          '#b8c5f0',  // 8.1:1 sobre #111827 ✅ AAA
+    '--text-muted':      '#8097d6',  // 4.6:1 sobre #111827 ✅ AA
+    '--accent':          '#7b9ef8',  // 5.8:1 sobre #111827 ✅ AA
+    '--accent-light':    '#1a2340',
+    '--accent-bg':       '#1a2340',
+    '--accent-border':   '#7b9ef8',
+    '--text-h':          '#e8edff',
+    '--social-bg':       '#1a2340',
+    '--shadow':          '0 4px 12px rgba(123, 158, 248, 0.2)',
   }
 }
 

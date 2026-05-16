@@ -4,25 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
-
+/*
+  Solo variables que ThemeContext NO maneja.
+  Las de --bg, --surface, --border, --text, --accent, etc.
+  las inyecta ThemeContext vía JS y siempre ganan.
+*/
 :root {
-  --bg: #f0f4ff;
-  --surface: #ffffff;
-  --surface-2: #e0e8ff;
-  --border: #7b8cde;
-  --text: #0d0f2b;
-  --text-muted: #3a4480;
-  --accent: #1a2fa8;
-  --accent-2: #6d28d9;
-  --success: #14532d;
-  --warning: #78350f;
+  --accent-2:        #6d28d9;  /* Violeta — 7.5:1 sobre #fff ✅ AAA */
+  --success:         #14532d;  /* Verde bosque — 10.2:1 ✅ AAA */
+  --warning:         #78350f;  /* Ámbar oscuro — 8.1:1 ✅ AAA */
 
-  /* Variables nuevas que faltaban ↓ */
-  --accent-bg: #e0e8ff;       /* Azul suave para fondo del counter */
-  --accent-border: #1a2fa8;   /* Igual al accent para hover */
-  --text-h: #0d0f2b;          /* Mismo que --text, headings */
-  --social-bg: #e0e8ff;       /* Fondo de botones sociales */
-  --shadow: 0 4px 12px rgba(26, 47, 168, 0.25); /* Sombra azul */
+  /* Semáforo (texto sobre superficie blanca) */
+  --status-pending:  #92400e;  /* 6.1:1 ✅ AA  */
+  --status-approved: #14532d;  /* 10.2:1 ✅ AAA */
+  --status-rejected: #991b1b;  /* 7.1:1 ✅ AAA */
+
+  /* Barras de progreso (sobre --surface-2 #e0e8ff) */
+  --bar-pending:     #b45309;  /* 3.2:1 ✅ UI */
+  --bar-approved:    #166534;  /* 5.1:1 ✅ AA */
+  --bar-rejected:    #b91c1c;  /* 4.8:1 ✅ AA */
 }
 
 body {
