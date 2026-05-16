@@ -25,7 +25,7 @@ El Sistema PREP es una plataforma de cómputo electoral que digitaliza y valida 
 ```
 ## Arquitectura general
 
-![Arquitectura](https://github.com/Alejandrin08/PREParando-IAyudando/documentation/Arquitectura.png)
+![Arquitectura](https://github.com/Alejandrin08/PREParando-IAyudando/tree/main/documentation/Arquitectura.png)
 ```
 
 ---
