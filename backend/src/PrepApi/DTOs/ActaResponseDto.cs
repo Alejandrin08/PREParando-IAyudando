@@ -9,6 +9,7 @@ namespace PrepApi.DTOs
         public string Section { get; set; } = string.Empty;
         public float GlobalConfidence { get; set; }
         public string ConfidenceLevel { get; set; } = string.Empty;
+        public int District { get; set; }
         public string Status { get; set; } = string.Empty;
         public string AssignedQueue { get; set; } = string.Empty;
         public bool ArithmeticValidationOk { get; set; }
