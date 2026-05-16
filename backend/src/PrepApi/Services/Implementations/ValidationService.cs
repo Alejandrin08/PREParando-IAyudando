@@ -39,11 +39,13 @@ namespace PrepApi.Services.Implementations
         public List<ActaValidation> Validate(ExtractionResult extraction)
         {
             var validations = new List<ActaValidation>();
+            var seccionField = extraction.Fields.FirstOrDefault(f => f.Name == "seccion");
             var fields = extraction.Fields.ToDictionary(f => f.Name, f => f.Value);
 
             validations.Add(ValidateTotalVotes(fields));
             validations.Add(ValidateTotalMatchesUrnas(fields));
             validations.Add(ValidatePersonasMatchUrnas(fields));
+            validations.Add(ValidateNoFieldExceedsNominal(fields, seccionField?.Value));
             validations.AddRange(ValidateNumberVsLetter(fields));
 
             return validations;
@@ -160,6 +162,28 @@ namespace PrepApi.Services.Implementations
                 Detail = passed
                     ? $"total_personas_votaron {personas} matches total_votos_urnas {urnas}"
                     : $"total_personas_votaron {personas} does not match total_votos_urnas {urnas}"
+            };
+        }
+
+        private static ActaValidation ValidateNoFieldExceedsNominal(Dictionary<string, string?> fields, string? seccionValue)
+        {
+            var ruleName = "TotalVotesDoNotExceedNominal";
+            var ruleNameFail = "TotalVotesExceedNominal";
+
+
+            if (string.IsNullOrEmpty(seccionValue) ||
+                !TryGetInt(fields, "total_votos", out var total))
+                return Inconclusive(ruleName, $"seccion or total_votos missing");
+
+            var listaNominal = ListaNominalPorSeccion.ContainsKey(seccionValue) ? ListaNominalPorSeccion[seccionValue] : 0;
+            var passed = total <= listaNominal;
+            return new ActaValidation
+            {
+                RuleName = passed ? ruleName : ruleNameFail,
+                Passed = passed,
+                Detail = passed
+                    ? $"total_votos {total} is within lista_nominal {listaNominal}"
+                    : $"total_votos {total} exceeds lista_nominal {listaNominal}"
             };
         }
 
