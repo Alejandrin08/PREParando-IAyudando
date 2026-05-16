@@ -4,7 +4,6 @@ import { actasApi } from '../../services/api'
 const fmt = (n) => (n ?? 0).toLocaleString('es-MX')
 const pct = (a, b) => (b === 0 ? '0' : ((a / b) * 100).toFixed(1))
 const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
-const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
 const STATUS_LABELS = {
   Pending:              'Pendiente',
@@ -20,35 +19,48 @@ const STATUS_COLOR = {
   Rejected:             '#ef4444',
   RejectedByCapturista: '#8b5cf6',
 }
-const REJECTION_LABELS = {
-  Ilegible:       'Ilegible',
-  SinDato:        'Sin Dato',
-  ExcedeLN:       'Excede Lista Nominal',
-  SinActa:        'Sin Acta',
-  TodosIlegibles: 'Todos ilegibles o sin dato',
-  CamposIlegibles:'Campos parcialmente ilegibles',
-  DatosParciales: 'Datos parciales visibles',
+
+// Motivos exactos por categoría
+const MOTIVOS_NO_CONT = {
+  ExcedeLN:        'Excede lista nominal',
+  TodosIlegibles:  'Todos los campos ilegibles o sin dato',
+  SinActa:         'Sin acta',
+}
+const MOTIVOS_CONT = {
+  Normal:          'Normal',
+  SinDato:         'Sin dato',
+  CamposIlegibles: 'Con datos ilegibles',
 }
 
-function KpiCard({ label, value, sub, color = 'var(--accent)', icon }) {
+// Errores aritméticos exactos
+const ERRORES_ARITMETICOS = {
+  SumaVotos:      'Suma de votos vs. total declarado',
+  TotalUrnas:     'Total de votos vs. conteo de urnas',
+  PersonasVotos:  'Personas que votaron vs. votos en urnas',
+  ExcedeNominal:  'Total de votos excede lista nominal',
+}
+
+// Niveles de confianza
+const CONF_NIVEL = (v) => {
+  if (v == null) return 'Sin dato'
+  if (v > 0.85)  return 'Alta'
+  if (v > 0.60)  return 'Media'
+  return 'Baja'
+}
+const CONF_COLOR = { Alta: '#10b981', Media: '#f59e0b', Baja: '#ef4444' }
+
+// ─── KPI Card ────────────────────────────────────────────────────────────────
+function KpiCard({ label, value, sub, color = 'var(--accent)' }) {
   return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--border)',
-      borderRadius: 12, padding: '16px 20px',
-      borderLeft: `4px solid ${color}`,
-    }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</p>
-          <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>{fmt(value)}</p>
-          {sub && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{sub}</p>}
-        </div>
-        {icon && <span style={{ fontSize: 22, opacity: 0.5 }}>{icon}</span>}
-      </div>
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', borderLeft: `4px solid ${color}` }}>
+      <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 6 }}>{label}</p>
+      <p style={{ fontSize: 28, fontWeight: 700, color: 'var(--text)', fontFamily: 'DM Mono, monospace', lineHeight: 1 }}>{fmt(value)}</p>
+      {sub && <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5 }}>{sub}</p>}
     </div>
   )
 }
 
+// ─── Progress Bar ────────────────────────────────────────────────────────────
 function ProgressBar({ label, value, total, color }) {
   const p = total === 0 ? 0 : (value / total) * 100
   return (
@@ -66,11 +78,11 @@ function ProgressBar({ label, value, total, color }) {
   )
 }
 
-function Section({ title, icon, children, id }) {
+// ─── Section wrapper ─────────────────────────────────────────────────────────
+function Section({ title, children }) {
   return (
-    <div id={id} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
-      <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', padding: '12px 20px', display: 'flex', alignItems: 'center', gap: 8 }}>
-        {icon && <span style={{ fontSize: 15 }}>{icon}</span>}
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden' }}>
+      <div style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)', padding: '12px 20px' }}>
         <h2 style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', letterSpacing: '0.02em' }}>{title}</h2>
       </div>
       <div style={{ padding: '16px 20px' }}>{children}</div>
@@ -78,6 +90,7 @@ function Section({ title, icon, children, id }) {
   )
 }
 
+// ─── Audit Table ─────────────────────────────────────────────────────────────
 function AuditTable({ cols, rows, emptyMsg = 'Sin datos' }) {
   if (!rows?.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>{emptyMsg}</p>
   return (
@@ -96,7 +109,7 @@ function AuditTable({ cols, rows, emptyMsg = 'Sin datos' }) {
           {rows.map((row, i) => (
             <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--surface-2)' }}>
               {cols.map(c => (
-                <td key={c.key} style={{ padding: '9px 12px', color: 'var(--text)', textAlign: c.right ? 'right' : 'left', fontFamily: c.mono ? 'DM Mono, monospace' : undefined, whiteSpace: c.wrap ? undefined : 'nowrap' }}>
+                <td key={c.key} style={{ padding: '9px 12px', color: 'var(--text)', textAlign: c.right ? 'right' : 'left', fontFamily: c.mono ? 'DM Mono, monospace' : undefined, whiteSpace: 'nowrap' }}>
                   {c.render ? c.render(row[c.key], row) : (row[c.key] ?? '—')}
                 </td>
               ))}
@@ -108,10 +121,398 @@ function AuditTable({ cols, rows, emptyMsg = 'Sin datos' }) {
   )
 }
 
+// ─── Stat chip ───────────────────────────────────────────────────────────────
+function StatChip({ label, value, sub, color }) {
+  return (
+    <div style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 10, padding: '10px 14px', flex: 1, minWidth: 100 }}>
+      <p style={{ fontSize: 10, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>{label}</p>
+      <p style={{ fontSize: 22, fontWeight: 700, fontFamily: 'DM Mono, monospace', color: color ?? 'var(--text)', lineHeight: 1 }}>{value}</p>
+      {sub && <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 3 }}>{sub}</p>}
+    </div>
+  )
+}
+
+// ─── CHART 1: Rechazadas ─────────────────────────────────────────────────────
+// Stacked horizontal bar: cada grupo (No Contabilizada / Contabilizada) muestra
+// sus 3 motivos como segmentos de color. Siempre 6 filas fijas, escala con n.
+const NO_CONT_COLORS = ['#c0392b', '#e74c3c', '#f1948a']
+const CONT_COLORS    = ['#0891b2', '#06b6d4', '#67e8f9']
+
+function RechazadasChart({ rows }) {
+  if (!rows.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Sin datos</p>
+
+  // Conteos por categoría + motivo
+  const noCont = Object.fromEntries(Object.keys(MOTIVOS_NO_CONT).map(k => [k, 0]))
+  const cont   = Object.fromEntries(Object.keys(MOTIVOS_CONT).map(k => [k, 0]))
+
+  rows.forEach(r => {
+    if (r.rejectionCategory === 'NoContabilizada' && noCont[r.rejectionReason] !== undefined)
+      noCont[r.rejectionReason]++
+    if (r.rejectionCategory === 'Contabilizada' && cont[r.rejectionReason] !== undefined)
+      cont[r.rejectionReason]++
+  })
+
+  const totalNC = Object.values(noCont).reduce((a, b) => a + b, 0)
+  const totalC  = Object.values(cont).reduce((a, b)  => a + b, 0)
+  const grand   = totalNC + totalC || 1
+
+  const renderGroup = (label, counts, labels, colors, total) => {
+    const entries = Object.entries(counts)
+    return (
+      <div style={{ marginBottom: 18 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
+          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
+            {fmt(total)} · {pct(total, grand)}% del total
+          </span>
+        </div>
+        {/* Stacked bar */}
+        <div style={{ display: 'flex', height: 14, borderRadius: 99, overflow: 'hidden', background: 'var(--surface-2)' }}>
+          {entries.map(([key, count], i) => (
+            <div key={key}
+              style={{ width: `${pct(count, grand)}%`, background: colors[i], transition: 'width 0.5s ease', minWidth: count > 0 ? 2 : 0 }}
+              title={`${labels[key]}: ${fmt(count)}`}
+            />
+          ))}
+        </div>
+        {/* Legend inline */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 6 }}>
+          {entries.map(([key, count], i) => (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: colors[i], flexShrink: 0 }} />
+              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{labels[key]} <strong style={{ color: 'var(--text)' }}>{fmt(count)}</strong></span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      {renderGroup('No contabilizadas', noCont, MOTIVOS_NO_CONT, NO_CONT_COLORS, totalNC)}
+      {renderGroup('Contabilizadas',    cont,   MOTIVOS_CONT,    CONT_COLORS,    totalC)}
+      {/* Proportional overview bar */}
+      <div style={{ marginTop: 6 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Proporción general</span>
+        </div>
+        <div style={{ display: 'flex', height: 20, borderRadius: 8, overflow: 'hidden' }}>
+          <div style={{ width: `${pct(totalNC, grand)}%`, background: '#c0392b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {totalNC > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{pct(totalNC, grand)}%</span>}
+          </div>
+          <div style={{ width: `${pct(totalC, grand)}%`, background: '#0891b2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {totalC > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{pct(totalC, grand)}%</span>}
+          </div>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+          <span style={{ fontSize: 10, color: '#c0392b', fontWeight: 600 }}>No contabilizadas</span>
+          <span style={{ fontSize: 10, color: '#0891b2', fontWeight: 600 }}>Contabilizadas</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── CHART 2: Errores aritméticos ────────────────────────────────────────────
+// 4 tipos fijos. Para cada uno: cuántas actas fallan (true) vs. pasan (false).
+// Visualización: 4 filas con barra de fallo + chip de porcentaje.
+function ErroresChart({ rows }) {
+  if (!rows.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Sin datos</p>
+
+  // Cada acta puede tener un objeto arithmeticErrors con los 4 tipos como boolean
+  // Si no existe ese campo, usamos arithmeticValidationOk como fallback genérico
+  const counts = Object.fromEntries(Object.keys(ERRORES_ARITMETICOS).map(k => [k, { fail: 0, pass: 0 }]))
+
+  rows.forEach(r => {
+    const errs = r.arithmeticErrors ?? {}
+    Object.keys(ERRORES_ARITMETICOS).forEach(k => {
+      if (errs[k] === true)       counts[k].fail++
+      else if (errs[k] === false) counts[k].pass++
+      else {
+        // fallback: si no hay detalle, marca todo como fallo si !arithmeticValidationOk
+        if (!r.arithmeticValidationOk) counts[k].fail++
+        else                            counts[k].pass++
+      }
+    })
+  })
+
+  const maxFail = Math.max(...Object.values(counts).map(c => c.fail), 1)
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {Object.entries(ERRORES_ARITMETICOS).map(([key, label], i) => {
+        const { fail, pass } = counts[key]
+        const total   = fail + pass
+        const failPct = total === 0 ? 0 : (fail / total) * 100
+        const barW    = (fail / maxFail) * 100
+        return (
+          <div key={key}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
+              <span style={{ fontSize: 12, color: 'var(--text)', flex: 1 }}>{label}</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: failPct > 20 ? '#ef4444' : 'var(--text-muted)', fontWeight: failPct > 20 ? 700 : 400 }}>
+                  {failPct.toFixed(1)}% fallan
+                </span>
+                <span style={{ fontSize: 10, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
+                  {fmt(fail)} / {fmt(total)}
+                </span>
+              </div>
+            </div>
+            {/* Barra bicolor: fallo (rojo) + ok (verde) */}
+            <div style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', background: 'var(--surface-2)' }}>
+              <div style={{ width: `${failPct}%`, background: '#ef4444', transition: 'width 0.5s ease' }} />
+              <div style={{ width: `${100 - failPct}%`, background: '#10b981', opacity: 0.35, transition: 'width 0.5s ease' }} />
+            </div>
+          </div>
+        )
+      })}
+      <div style={{ display: 'flex', gap: 14, marginTop: 4 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, background: '#ef4444' }} />
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Falla la validación</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+          <div style={{ width: 10, height: 10, borderRadius: 2, background: '#10b981', opacity: 0.5 }} />
+          <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>Pasa la validación</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── CHART 3: Confianza — distribución en 3 niveles ──────────────────────────
+// Histogram de 10 bins + donut resumen de Alta / Media / Baja.
+// Escala con cualquier n de actas; siempre 10 columnas + 3 segmentos.
+function ConfianzaChart({ rows }) {
+  if (!rows.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Sin datos</p>
+
+  // Conteo por nivel
+  const nivel = { Alta: 0, Media: 0, Baja: 0 }
+  rows.forEach(r => { nivel[CONF_NIVEL(r.globalConfidence)]++ })
+  const total  = rows.length
+  const maxNiv = Math.max(...Object.values(nivel), 1)
+
+  // Histogram bins (10 deciles de globalConfidence)
+  const bins = Array.from({ length: 10 }, () => ({ Alta: 0, Media: 0, Baja: 0 }))
+  rows.forEach(r => {
+    const conf = r.globalConfidence ?? 0
+    const bin  = Math.min(Math.floor(conf * 10), 9)
+    bins[bin][CONF_NIVEL(r.globalConfidence)]++
+  })
+  const maxBin = Math.max(...bins.map(b => b.Alta + b.Media + b.Baja), 1)
+
+  // El nivel más frecuente
+  const dominante = Object.entries(nivel).sort((a, b) => b[1] - a[1])[0]
+
+  return (
+    <div style={{ display: 'flex', gap: 28, flexWrap: 'wrap' }}>
+
+      {/* Left: histograma */}
+      <div style={{ flex: 2, minWidth: 200 }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 10 }}>
+          Distribución de confianza global (todas las actas)
+        </p>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 110 }}>
+          {bins.map((bin, i) => {
+            const t    = bin.Alta + bin.Media + bin.Baja
+            const totH = (t / maxBin) * 100
+            return (
+              <div key={i} title={`${i * 10}–${(i + 1) * 10}%: ${t} actas`}
+                style={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'flex-end', alignItems: 'center' }}>
+                {t > 0 && <span style={{ fontSize: 8, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)', marginBottom: 1 }}>{t}</span>}
+                <div style={{ width: '100%', height: `${totH}%`, display: 'flex', flexDirection: 'column-reverse', borderRadius: '3px 3px 0 0', overflow: 'hidden' }}>
+                  {/* apilado: Baja abajo, Media medio, Alta arriba */}
+                  <div style={{ width: '100%', flex: bin.Baja,  background: CONF_COLOR.Baja  }} />
+                  <div style={{ width: '100%', flex: bin.Media, background: CONF_COLOR.Media }} />
+                  <div style={{ width: '100%', flex: bin.Alta,  background: CONF_COLOR.Alta  }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {/* X axis */}
+        <div style={{ display: 'flex', gap: 4, marginTop: 3 }}>
+          {bins.map((_, i) => (
+            <div key={i} style={{ flex: 1, textAlign: 'center' }}>
+              <span style={{ fontSize: 8, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}>{i * 10}</span>
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize: 9, color: 'var(--text-muted)', textAlign: 'center', marginTop: 1 }}>% confianza global del acta</p>
+
+        {/* Umbral markers */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+          {[['#ef4444', 'Baja  < 60%'], ['#f59e0b', 'Media 60–85%'], ['#10b981', 'Alta  > 85%']].map(([color, label]) => (
+            <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: color }} />
+              <span style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}>{label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Right: resumen por nivel */}
+      <div style={{ flex: 1, minWidth: 140, display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'center' }}>
+        <p style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 2 }}>
+          Resumen por nivel
+        </p>
+        {Object.entries(nivel).map(([key, count]) => (
+          <div key={key}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+              <span style={{ fontSize: 12, color: 'var(--text)', fontWeight: key === dominante[0] ? 700 : 400 }}>{key}</span>
+              <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: CONF_COLOR[key], fontWeight: 700 }}>{fmt(count)}</span>
+            </div>
+            <div style={{ height: 8, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${(count / maxNiv) * 100}%`, background: CONF_COLOR[key], borderRadius: 99, transition: 'width 0.5s ease' }} />
+            </div>
+            <p style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 2 }}>{pct(count, total)}% del total</p>
+          </div>
+        ))}
+
+        {/* Insight */}
+        <div style={{ marginTop: 6, padding: '9px 12px', background: 'var(--surface-2)', borderRadius: 8, borderLeft: `3px solid ${CONF_COLOR[dominante[0]]}` }}>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>
+            El nivel predominante es <strong style={{ color: CONF_COLOR[dominante[0]] }}>{dominante[0]}</strong> con {fmt(dominante[1])} actas ({pct(dominante[1], total)}%).
+          </p>
+        </div>
+      </div>
+
+    </div>
+  )
+}
+
+// ─── Drawer trigger ───────────────────────────────────────────────────────────
+function DrawerTrigger({ open, onToggle, counts }) {
+  return (
+    <button onClick={onToggle} style={{
+      width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14,
+      padding: '14px 20px', cursor: 'pointer', textAlign: 'left', transition: 'background 0.15s',
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 18, opacity: 0.6 }}>⚠️</span>
+        <div>
+          <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>Revisión de actas problemáticas</p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Rechazadas · Errores aritméticos · Confianza baja</p>
+        </div>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: '#fcebeb', color: '#a32d2d' }}>{fmt(counts.rejected)} rechazadas</span>
+          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: '#faeeda', color: '#854f0b' }}>{fmt(counts.errors)} errores</span>
+          <span style={{ fontSize: 11, fontWeight: 600, padding: '3px 10px', borderRadius: 99, background: '#fbeaf0', color: '#993556' }}>{fmt(counts.lowConf)} baja confianza</span>
+        </div>
+        <span style={{ fontSize: 16, color: 'var(--text-muted)', transition: 'transform 0.25s', display: 'inline-block', transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}>▾</span>
+      </div>
+    </button>
+  )
+}
+
+// ─── Drawer ───────────────────────────────────────────────────────────────────
+const DRAWER_ITEMS = [
+  { key: 'rejected',  label: 'Rechazadas',      countKey: 'rejected' },
+  { key: 'errors',    label: 'Errores aritmét.', countKey: 'errors'   },
+  { key: 'confianza', label: 'Confianza',        countKey: 'lowConf'  },
+]
+
+function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
+  const [activeTab, setActiveTab] = useState('rejected')
+  if (!open) return null
+
+  const counts = { rejected: withRejection.length, errors: withErrors.length, lowConf: lowConf.length }
+
+  const rejNC = withRejection.filter(r => r.rejectionCategory === 'NoContabilizada').length
+  const rejC  = withRejection.filter(r => r.rejectionCategory === 'Contabilizada').length
+
+  const highQueue = withErrors.filter(r => r.assignedQueue === 'High').length
+  const avgConf   = withErrors.length
+    ? (withErrors.reduce((s, r) => s + (r.globalConfidence ?? 0), 0) / withErrors.length * 100).toFixed(0)
+    : '—'
+
+  const nivelCounts = { Alta: 0, Media: 0, Baja: 0 }
+  allFiltered.forEach(r => { nivelCounts[CONF_NIVEL(r.globalConfidence)]++ })
+
+  return (
+    <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 14, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', minHeight: 340 }}>
+
+        {/* Sidebar */}
+        <div style={{ width: 200, flexShrink: 0, background: 'var(--surface-2)', borderRight: '1px solid var(--border)', padding: '12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {DRAWER_ITEMS.map(item => {
+            const active = activeTab === item.key
+            return (
+              <button key={item.key} onClick={() => setActiveTab(item.key)} style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '9px 12px', borderRadius: 8, border: 'none', cursor: 'pointer', textAlign: 'left',
+                background: active ? 'var(--accent)' : 'transparent',
+                color: active ? '#fff' : 'var(--text)',
+                fontWeight: active ? 700 : 400, fontSize: 13, transition: 'background 0.12s',
+              }}>
+                <span>{item.label}</span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, fontFamily: 'DM Mono, monospace',
+                  padding: '2px 7px', borderRadius: 99,
+                  background: active ? 'rgba(255,255,255,0.2)' : 'var(--surface)',
+                  color: active ? '#fff' : 'var(--text-muted)',
+                  border: active ? 'none' : '1px solid var(--border)',
+                  minWidth: 28, textAlign: 'center',
+                }}>
+                  {fmt(counts[item.countKey])}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Panel */}
+        <div style={{ flex: 1, minWidth: 0, padding: '20px 24px', overflowX: 'auto' }}>
+
+          {activeTab === 'rejected' && (
+            <>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+                <StatChip label="Total rechazadas"   value={fmt(withRejection.length)} color="#a32d2d" sub="con motivo registrado" />
+                <StatChip label="No contabilizadas"  value={fmt(rejNC)} color="#c0392b" sub={`${pct(rejNC, withRejection.length)}%`} />
+                <StatChip label="Contabilizadas"     value={fmt(rejC)}  color="#0891b2" sub={`${pct(rejC, withRejection.length)}%`} />
+              </div>
+              <RechazadasChart rows={withRejection} />
+            </>
+          )}
+
+          {activeTab === 'errors' && (
+            <>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+                <StatChip label="Total con error"  value={fmt(withErrors.length)} color="#854f0b" sub="actas con al menos un error" />
+                <StatChip label="Cola alta"        value={fmt(highQueue)}         sub={`${pct(highQueue, withErrors.length)}% del grupo`} />
+                <StatChip label="Confianza prom."  value={`${avgConf}%`}          sub="dentro del grupo" />
+              </div>
+              <ErroresChart rows={withErrors} />
+            </>
+          )}
+
+          {activeTab === 'confianza' && (
+            <>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+                <StatChip label="Alta  (>85%)"    value={fmt(nivelCounts.Alta)}  color="#10b981" sub={`${pct(nivelCounts.Alta, allFiltered.length)}%`} />
+                <StatChip label="Media (60–85%)"  value={fmt(nivelCounts.Media)} color="#f59e0b" sub={`${pct(nivelCounts.Media, allFiltered.length)}%`} />
+                <StatChip label="Baja  (<60%)"    value={fmt(nivelCounts.Baja)}  color="#ef4444" sub={`${pct(nivelCounts.Baja, allFiltered.length)}%`} />
+              </div>
+              <ConfianzaChart rows={allFiltered} />
+            </>
+          )}
+
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 export default function AuditDashboard() {
-  const [data,    setData]    = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [filter,  setFilter]  = useState({ entity: '', status: '', dateFrom: '', dateTo: '' })
+  const [data,       setData]       = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [filter,     setFilter]     = useState({ entity: '', status: '', dateFrom: '', dateTo: '' })
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const printRef = useRef()
 
   useEffect(() => { loadData() }, [])
@@ -121,7 +522,7 @@ export default function AuditDashboard() {
     try {
       const [dashRes, allRes] = await Promise.all([
         actasApi.getDashboard(),
-        actasApi.getQueue({ status: '' }), 
+        actasApi.getQueue({ status: '' }),
       ])
       setData({ dashboard: dashRes.data, actas: allRes.data })
     } catch (e) { console.error(e) }
@@ -150,7 +551,6 @@ export default function AuditDashboard() {
       <span style={{ color: 'var(--text-muted)', fontSize: 14 }} className="animate-pulse">Cargando datos de auditoría...</span>
     </div>
   )
-
   if (!data) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh' }}>
       <span style={{ color: 'var(--text-muted)', fontSize: 14 }}>Error al cargar datos</span>
@@ -161,8 +561,8 @@ export default function AuditDashboard() {
   const total = dashboard.totalActas || 0
 
   const filtered = actas.filter(a => {
-    if (filter.entity && !a.entity?.toLowerCase().includes(filter.entity.toLowerCase())) return false
-    if (filter.status && a.status !== filter.status) return false
+    if (filter.entity   && !a.entity?.toLowerCase().includes(filter.entity.toLowerCase())) return false
+    if (filter.status   && a.status !== filter.status) return false
     if (filter.dateFrom && new Date(a.ingestedAt) < new Date(filter.dateFrom)) return false
     if (filter.dateTo   && new Date(a.ingestedAt) > new Date(filter.dateTo + 'T23:59:59')) return false
     return true
@@ -173,10 +573,10 @@ export default function AuditDashboard() {
       const key = a.entity || 'Sin entidad'
       if (!acc[key]) acc[key] = { entity: key, total: 0, approved: 0, rejected: 0, pending: 0, errors: 0 }
       acc[key].total++
-      if (a.status === 'Approved') acc[key].approved++
+      if (a.status === 'Approved')      acc[key].approved++
       else if (a.status === 'Rejected') acc[key].rejected++
-      else acc[key].pending++
-      if (!a.arithmeticValidationOk) acc[key].errors++
+      else                               acc[key].pending++
+      if (!a.arithmeticValidationOk)    acc[key].errors++
       return acc
     }, {})
   ).sort((a, b) => b.total - a.total)
@@ -187,7 +587,7 @@ export default function AuditDashboard() {
       .reduce((acc, a) => {
         const key = a.approvedBy
         if (!acc[key]) acc[key] = { user: key, approved: 0, rejected: 0, lastAction: null }
-        if (a.status === 'Approved') acc[key].approved++
+        if (a.status === 'Approved')      acc[key].approved++
         else if (a.status === 'Rejected') acc[key].rejected++
         if (!acc[key].lastAction || new Date(a.approvedAt) > new Date(acc[key].lastAction))
           acc[key].lastAction = a.approvedAt
@@ -196,24 +596,8 @@ export default function AuditDashboard() {
   ).sort((a, b) => (b.approved + b.rejected) - (a.approved + a.rejected))
 
   const withRejection = filtered.filter(a => a.rejectionReason)
-
-  const withErrors = filtered.filter(a => !a.arithmeticValidationOk)
-
-  const lowConf = filtered.filter(a => a.confidenceLevel === 'Low')
-
-  const byDay = Object.entries(
-    filtered.reduce((acc, a) => {
-      const day = new Date(a.ingestedAt).toISOString().slice(0, 10)
-      acc[day] = (acc[day] || 0) + 1
-      return acc
-    }, {})
-  ).sort(([a], [b]) => a.localeCompare(b)).slice(-20)
-
-  const maxDay = Math.max(...byDay.map(([, v]) => v), 1)
-
-  const approvalRate = pct(dashboard.approved, total)
-  const rejectionRate = pct(dashboard.rejected, total)
-  const errorRate = pct(dashboard.withArithmeticErrors, total)
+  const withErrors    = filtered.filter(a => !a.arithmeticValidationOk)
+  const lowConf       = filtered.filter(a => (a.globalConfidence ?? 1) < 0.60)
 
   const reportDate = new Date().toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })
 
@@ -222,20 +606,14 @@ export default function AuditDashboard() {
 
       <div className="flex items-start justify-between flex-wrap gap-4 no-print">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-            <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)' }}>Auditoría del sistema</h1>
-          </div>
-          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-            Reporte generado el {reportDate} · {fmt(total)} actas en el sistema
-          </p>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Auditoría del sistema</h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Reporte generado el {reportDate} · {fmt(total)} actas en el sistema</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={loadData}
-            style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
+          <button onClick={loadData} style={{ padding: '8px 16px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-muted)', fontSize: 13, cursor: 'pointer' }}>
             ↻ Actualizar
           </button>
-          <button onClick={handlePrint}
-            style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={handlePrint} style={{ padding: '8px 18px', borderRadius: 8, border: 'none', background: 'var(--accent)', color: 'white', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
             ⬇ Exportar PDF
           </button>
         </div>
@@ -249,11 +627,11 @@ export default function AuditDashboard() {
           <hr style={{ margin: '10px 0' }} />
         </div>
 
+        {/* Filtros */}
         <div className="no-print" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 20px' }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Filtros</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <input placeholder="Entidad / municipio"
-              value={filter.entity}
+            <input placeholder="Entidad / municipio" value={filter.entity}
               onChange={e => setFilter(f => ({ ...f, entity: e.target.value }))}
               style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, width: 200 }} />
             <select value={filter.status}
@@ -280,60 +658,51 @@ export default function AuditDashboard() {
           </p>
         </div>
 
+        {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <KpiCard label="Total actas" value={filtered.length} color="var(--accent)" sub={`de ${fmt(total)} en sistema`} />
-          <KpiCard label="Aprobadas" value={filtered.filter(a => a.status === 'Approved').length} color="#10b981" sub={`${pct(filtered.filter(a => a.status === 'Approved').length, filtered.length)}% del filtro`} />
-          <KpiCard label="Rechazadas" value={filtered.filter(a => a.status === 'Rejected').length} color="#ef4444" sub={`${pct(filtered.filter(a => a.status === 'Rejected').length, filtered.length)}% del filtro`} />
-          <KpiCard label="Errores aritméticos" value={filtered.filter(a => !a.arithmeticValidationOk).length} color="#f59e0b" sub={`${pct(filtered.filter(a => !a.arithmeticValidationOk).length, filtered.length)}% del filtro`} />
+          <KpiCard label="Total actas"         value={filtered.length}                                        color="var(--accent)" sub={`de ${fmt(total)} en sistema`} />
+          <KpiCard label="Aprobadas"           value={filtered.filter(a => a.status === 'Approved').length}   color="#10b981"       sub={`${pct(filtered.filter(a => a.status === 'Approved').length, filtered.length)}% del filtro`} />
+          <KpiCard label="Rechazadas"          value={filtered.filter(a => a.status === 'Rejected').length}   color="#ef4444"       sub={`${pct(filtered.filter(a => a.status === 'Rejected').length, filtered.length)}% del filtro`} />
+          <KpiCard label="Errores aritméticos" value={withErrors.length}                                      color="#f59e0b"       sub={`${pct(withErrors.length, filtered.length)}% del filtro`} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <KpiCard label="Pendientes" value={filtered.filter(a => a.status === 'Pending').length} color="#6366f1" />
-          <KpiCard label="En revisión" value={filtered.filter(a => a.status === 'InReview' || a.status === 'RejectedByCapturista').length} color="#8b5cf6" />
-          <KpiCard label="Confianza baja" value={filtered.filter(a => a.confidenceLevel === 'Low').length} color="#ec4899" sub="Requieren atención" />
-          <KpiCard label="Cola alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length} color="#ef4444" />
+          <KpiCard label="Pendientes"          value={filtered.filter(a => a.status === 'Pending').length}                                                             color="#6366f1" />
+          <KpiCard label="En revisión"         value={filtered.filter(a => a.status === 'InReview' || a.status === 'RejectedByCapturista').length}                     color="#8b5cf6" />
+          <KpiCard label="Confianza baja"      value={lowConf.length}                                                                                                  color="#ef4444" sub="< 60% de confianza" />
+          <KpiCard label="Cola alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length}                                                         color="#ec4899" />
         </div>
 
+        {/* Distribución + Usuarios */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-
-          <Section title="Distribución por estado" >
+          <Section title="Distribución por estado">
             {Object.entries(STATUS_LABELS).map(([status, label]) => {
               const count = filtered.filter(a => a.status === status).length
-              return (
-                <ProgressBar key={status} label={label} value={count} total={filtered.length} color={STATUS_COLOR[status]} />
-              )
+              return <ProgressBar key={status} label={label} value={count} total={filtered.length} color={STATUS_COLOR[status]} />
             })}
           </Section>
-
-          <Section title="Últimos registros">
-            {byDay.length === 0
-              ? <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>Sin datos en el período seleccionado</p>
-              : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  {byDay.map(([day, count]) => (
-                    <div key={day} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace', width: 90, flexShrink: 0 }}>{fmtDateShort(day)}</span>
-                      <div style={{ flex: 1, height: 16, background: 'var(--surface-2)', borderRadius: 4, overflow: 'hidden' }}>
-                        <div style={{ height: '100%', width: `${(count / maxDay) * 100}%`, background: 'var(--accent)', borderRadius: 4, display: 'flex', alignItems: 'center', paddingLeft: 6, transition: 'width 0.5s ease' }}>
-                          {count >= 2 && <span style={{ fontSize: 10, color: 'white', fontWeight: 700 }}>{count}</span>}
-                        </div>
-                      </div>
-                      {count < 2 && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace', width: 20 }}>{count}</span>}
-                    </div>
-                  ))}
-                </div>
-              )
-            }
+          <Section title="Actividad por usuario">
+            <AuditTable
+              cols={[
+                { key: 'user',       label: 'Usuario' },
+                { key: 'approved',   label: 'Aprobadas',    right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
+                { key: 'rejected',   label: 'Rechazadas',   right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
+                { key: 'lastAction', label: 'Última acción', render: v => fmtDate(v) },
+              ]}
+              rows={byUser}
+              emptyMsg="Ninguna acta ha sido procesada aún"
+            />
           </Section>
         </div>
 
+        {/* Entidad */}
         <Section title="Resumen por entidad / municipio">
           <AuditTable
             cols={[
-              { key: 'entity', label: 'Entidad' },
-              { key: 'total',    label: 'Total',    right: true, mono: true },
-              { key: 'approved', label: 'Aprobadas', right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-              { key: 'rejected', label: 'Rechazadas', right: true, mono: true, render: v => <span style={{ color: v > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: v > 0 ? 600 : 400 }}>{fmt(v)}</span> },
-              { key: 'pending',  label: 'Pendientes', right: true, mono: true },
+              { key: 'entity',   label: 'Entidad' },
+              { key: 'total',    label: 'Total',           right: true, mono: true },
+              { key: 'approved', label: 'Aprobadas',       right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
+              { key: 'rejected', label: 'Rechazadas',      right: true, mono: true, render: v => <span style={{ color: v > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: v > 0 ? 600 : 400 }}>{fmt(v)}</span> },
+              { key: 'pending',  label: 'Pendientes',      right: true, mono: true },
               { key: 'errors',   label: 'Err. aritmético', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
               { key: 'total',    label: 'Tasa aprobación', right: true, render: (v, row) => `${pct(row.approved, row.total)}%` },
             ]}
@@ -342,96 +711,23 @@ export default function AuditDashboard() {
           />
         </Section>
 
-        <Section title="Actividad por usuario">
-          <AuditTable
-            cols={[
-              { key: 'user',       label: 'Usuario / correo' },
-              { key: 'approved',   label: 'Aprobadas',  right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-              { key: 'rejected',   label: 'Rechazadas', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
-              { key: 'lastAction', label: 'Última acción', render: v => fmtDate(v) },
-            ]}
-            rows={byUser}
-            emptyMsg="Ninguna acta ha sido procesada aún"
-          />
-        </Section>
-
-        <Section title="Actas rechazadas con motivo registrado">
-          <AuditTable
-            cols={[
-              { key: 'id',          label: '#', mono: true },
-              { key: 'entity',      label: 'Entidad' },
-              { key: 'municipality',label: 'Municipio' },
-              { key: 'section',     label: 'Sección', mono: true },
-              { key: 'rejectionCategory', label: 'Categoría', render: v => v === 'Contabilizada' ? <span style={{ color: '#0891b2', fontWeight: 600 }}>Contabilizada</span> : v === 'NoContabilizada' ? <span style={{ color: '#be185d', fontWeight: 600 }}>No Contabilizada</span> : <span style={{ color: 'var(--text-muted)' }}>—</span> },
-              { key: 'rejectionReason', label: 'Motivo', render: v => REJECTION_LABELS[v] ?? v ?? '—' },
-              { key: 'approvedBy',  label: 'Procesada por' },
-              { key: 'approvedAt',  label: 'Fecha', render: v => fmtDate(v) },
-            ]}
-            rows={withRejection}
-            emptyMsg="No hay actas rechazadas con motivo registrado"
-          />
-        </Section>
-
-        <Section title="Actas con errores aritméticos">
-          <AuditTable
-            cols={[
-              { key: 'id',           label: '#', mono: true },
-              { key: 'entity',       label: 'Entidad' },
-              { key: 'municipality', label: 'Municipio' },
-              { key: 'section',      label: 'Sección', mono: true },
-              { key: 'status',       label: 'Estado', render: v => <span style={{ color: STATUS_COLOR[v], fontWeight: 600 }}>{STATUS_LABELS[v] ?? v}</span> },
-              { key: 'globalConfidence', label: 'Confianza', mono: true, right: true, render: v => `${((v ?? 0) * 100).toFixed(0)}%` },
-              { key: 'assignedQueue',    label: 'Cola', render: v => v === 'High' ? <span style={{ color: '#ef4444', fontWeight: 700 }}>Alta</span> : <span style={{ color: 'var(--text-muted)' }}>Estándar</span> },
-              { key: 'ingestedAt',   label: 'Ingresada', render: v => fmtDateShort(v) },
-            ]}
-            rows={withErrors}
-            emptyMsg="No hay actas con errores aritméticos"
-          />
-        </Section>
-
-        <Section title="Actas con confianza baja de la IA">
-          <AuditTable
-            cols={[
-              { key: 'id',           label: '#', mono: true },
-              { key: 'entity',       label: 'Entidad' },
-              { key: 'municipality', label: 'Municipio' },
-              { key: 'section',      label: 'Sección', mono: true },
-              { key: 'globalConfidence', label: 'Confianza global', mono: true, right: true, render: v => <span style={{ color: '#ef4444', fontWeight: 700 }}>{((v ?? 0) * 100).toFixed(1)}%</span> },
-              { key: 'status', label: 'Estado', render: v => <span style={{ color: STATUS_COLOR[v] ?? 'var(--text-muted)', fontWeight: 600 }}>{STATUS_LABELS[v] ?? v}</span> },
-              { key: 'approvedBy', label: 'Procesada por' },
-            ]}
-            rows={lowConf}
-            emptyMsg="No hay actas con confianza baja"
-          />
-        </Section>
-
-        <Section title="Trazabilidad completa de actas (filtradas)">
-          <AuditTable
-            cols={[
-              { key: 'id',           label: '#', mono: true },
-              { key: 'entity',       label: 'Entidad' },
-              { key: 'municipality', label: 'Municipio' },
-              { key: 'section',      label: 'Sección', mono: true },
-              { key: 'status', label: 'Estado', render: v => <span style={{ color: STATUS_COLOR[v] ?? 'var(--text-muted)', fontWeight: 600 }}>{STATUS_LABELS[v] ?? v}</span> },
-              { key: 'assignedQueue', label: 'Cola', render: v => v === 'High' ? <span style={{ color: '#ef4444', fontWeight: 700 }}>Alta</span> : 'Estándar' },
-              { key: 'globalConfidence', label: 'IA %', mono: true, right: true, render: v => `${((v ?? 0) * 100).toFixed(0)}%` },
-              { key: 'arithmeticValidationOk', label: 'Aritmética', render: v => v ? <span style={{ color: '#10b981' }}>✓ OK</span> : <span style={{ color: '#ef4444' }}>✗ Error</span> },
-              { key: 'ingestedAt',  label: 'Ingresada',   render: v => fmtDateShort(v) },
-              { key: 'approvedBy',  label: 'Procesada por' },
-              { key: 'approvedAt',  label: 'Procesada el', render: v => fmtDate(v) },
-            ]}
-            rows={filtered}
-            emptyMsg="Sin actas con los filtros actuales"
-          />
-        </Section>
+        {/* Drawer */}
+        <DrawerTrigger
+          open={drawerOpen}
+          onToggle={() => setDrawerOpen(o => !o)}
+          counts={{ rejected: withRejection.length, errors: withErrors.length, lowConf: lowConf.length }}
+        />
+        <Drawer
+          open={drawerOpen}
+          withRejection={withRejection}
+          withErrors={withErrors}
+          lowConf={lowConf}
+          allFiltered={filtered}
+        />
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-            Sistema PREP · Reporte de auditoría generado el {reportDate}
-          </p>
-          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}>
-            {fmt(filtered.length)} actas analizadas
-          </p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sistema PREP · Reporte de auditoría generado el {reportDate}</p>
+          <p style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}>{fmt(filtered.length)} actas analizadas</p>
         </div>
 
       </div>
