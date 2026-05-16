@@ -1,5 +1,6 @@
 using PrepApi.Models;
 using PrepApi.Services.Interfaces;
+using PrepApi.Utils;
 
 namespace PrepApi.Services.Implementations
 {
@@ -38,12 +39,63 @@ namespace PrepApi.Services.Implementations
         public List<ActaValidation> Validate(ExtractionResult extraction)
         {
             var validations = new List<ActaValidation>();
-            var seccionField = extraction.Fields.FirstOrDefault(f => f.Name == "seccion");
             var fields = extraction.Fields.ToDictionary(f => f.Name, f => f.Value);
+
             validations.Add(ValidateTotalVotes(fields));
             validations.Add(ValidateTotalMatchesUrnas(fields));
             validations.Add(ValidatePersonasMatchUrnas(fields));
-            validations.Add(ValidateNoFieldExceedsNominal(fields, seccionField?.Value));
+            validations.AddRange(ValidateNumberVsLetter(fields));
+
+            return validations;
+        }
+
+        private static IEnumerable<ActaValidation> ValidateNumberVsLetter(
+            Dictionary<string, string?> fields)
+        {
+            var validations = new List<ActaValidation>();
+
+            var letterFields = fields.Keys
+                .Where(k => k.EndsWith("_letra"))
+                .ToList();
+
+            foreach (var letterField in letterFields)
+            {
+                var numericFieldName = letterField.Replace("_letra", "");
+                if (!fields.ContainsKey(numericFieldName)) continue;
+
+                var ruleName = $"NumberLetterMatch_{numericFieldName}";
+
+                if (!TryGetInt(fields, numericFieldName, out var numericValue))
+                {
+                    validations.Add(Inconclusive(ruleName,
+                        $"No se pudo leer el valor numérico de {numericFieldName}"));
+                    continue;
+                }
+
+                var letterText = fields[letterField];
+                var parsedFromLetter = SpanishNumberParser.Parse(letterText);
+
+                if (parsedFromLetter == null)
+                {
+                    validations.Add(new ActaValidation
+                    {
+                        RuleName = ruleName,
+                        Passed = false,
+                        Detail = $"No se pudo interpretar '{letterText}' como número en {letterField}"
+                    });
+                    continue;
+                }
+
+                var passed = numericValue == parsedFromLetter.Value;
+                validations.Add(new ActaValidation
+                {
+                    RuleName = ruleName,
+                    Passed = passed,
+                    Detail = passed
+                        ? $"El número ({numericValue}) coincide con la letra '{letterText}' ({parsedFromLetter})"
+                        : $"Discrepancia: el número dice {numericValue} pero la letra dice '{letterText}' ({parsedFromLetter})"
+                });
+            }
 
             return validations;
         }

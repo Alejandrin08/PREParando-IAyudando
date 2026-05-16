@@ -66,10 +66,10 @@ Data/
   20260509210859_AddTextValueToActaField.Designer.cs
   20260512030513_AddIdentity.cs
   20260512030513_AddIdentity.Designer.cs
-  20260513002005_InitialCreate.cs
-  20260513002005_InitialCreate.Designer.cs
   20260513192925_Rejection.cs
   20260513192925_Rejection.Designer.cs
+  20260515235507_DistrictField.cs
+  20260515235507_DistrictField.Designer.cs
   AppDbContextModelSnapshot.cs
 DTOs/
  ActaBatchRequestDto.cs
@@ -112,6 +112,7 @@ Services/Interfaces/
  IPublicResultsService.cs
  IQueueService.cs
  IValidationService.cs
+Utils/SpanishNumberParser.cs
 
 [metadataReferences]
 <DOTNET>/packs/Microsoft.AspNetCore.App.Ref/9.0.16/ref/net9.0/

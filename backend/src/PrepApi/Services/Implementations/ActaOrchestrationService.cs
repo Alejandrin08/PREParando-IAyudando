@@ -81,6 +81,7 @@ namespace PrepApi.Services.Implementations
                         var entityField = extraction.Fields.FirstOrDefault(f => f.Name == "entidad");
                         var municipalityField = extraction.Fields.FirstOrDefault(f => f.Name == "municipio");
                         var sectionField = extraction.Fields.FirstOrDefault(f => f.Name == "seccion");
+                        var distritoField = extraction.Fields.FirstOrDefault(f => f.Name == "distrito");
 
                         var acta = new Acta
                         {
@@ -403,7 +404,8 @@ namespace PrepApi.Services.Implementations
             ApprovedAt = acta.ApprovedAt,
             RejectionReason = acta.RejectionReason,
             RejectionCategory = acta.RejectionCategory,
-            ImageUrl = $"https://prepactasstorage.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
+            District = acta.District,
+            ImageUrl = $"https://prepactasstoragedos.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
             Fields = acta.Fields.Select(f => new FieldResponseDto
             {
                 Name = f.FieldName,
