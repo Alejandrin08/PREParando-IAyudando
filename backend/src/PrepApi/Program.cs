@@ -69,18 +69,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddScoped<Scalar.AspNetCore.ScalarOptions>();
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowFrontend", policy =>
-    {
-        policy.WithOrigins(
-            "https://pre-parando-i-ayudando.vercel.app",
-            "http://localhost:5173"  // para desarrollo local
-        )
-        .AllowAnyHeader()
-        .AllowAnyMethod();
-    });
-});
+
 
 var app = builder.Build();
 
