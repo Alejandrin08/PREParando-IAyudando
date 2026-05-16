@@ -187,35 +187,35 @@ function RechazadasChart({ rows }) {
 // ─── CHART 2: Errores aritméticos ────────────────────────────────────────────
 // 4 tipos fijos. Para cada uno: cuántas actas fallan (true) vs. pasan (false).
 // Visualización: 4 filas con barra de fallo + chip de porcentaje.
+
 function ErroresChart({ rows }) {
   if (!rows.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Sin datos</p>
 
-  // Cada acta puede tener un objeto arithmeticErrors con los 4 tipos como boolean
-  // Si no existe ese campo, usamos arithmeticValidationOk como fallback genérico
+  const RULE_MAP = {
+    SumOfVotesDoNotMatchesTotal:    'SumaVotos',
+    TotalVotesMatchUrnas:           'TotalUrnas',
+    PersonasVotaronDoNotMatchUrnas: 'PersonasVotos',
+    TotalVotesExceedNominal:        'ExcedeNominal',
+  }
+
   const counts = Object.fromEntries(Object.keys(ERRORES_ARITMETICOS).map(k => [k, { fail: 0, pass: 0 }]))
 
   rows.forEach(r => {
-    const errs = r.arithmeticErrors ?? {}
-    Object.keys(ERRORES_ARITMETICOS).forEach(k => {
-      if (errs[k] === true) counts[k].fail++
-      else if (errs[k] === false) counts[k].pass++
-      else {
-        // fallback: si no hay detalle, marca todo como fallo si !arithmeticValidationOk
-        if (!r.arithmeticValidationOk) counts[k].fail++
-        else counts[k].pass++
-      }
+    const validations = r.validations ?? []
+    validations.forEach(v => {
+      const key = RULE_MAP[v.ruleName]
+      if (!key) return
+      if (v.passed) counts[key].pass++
+      else counts[key].fail++
     })
   })
 
-  const maxFail = Math.max(...Object.values(counts).map(c => c.fail), 1)
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {Object.entries(ERRORES_ARITMETICOS).map(([key, label], i) => {
+      {Object.entries(ERRORES_ARITMETICOS).map(([key, label]) => {
         const { fail, pass } = counts[key]
         const total = fail + pass
         const failPct = total === 0 ? 0 : (fail / total) * 100
-        const barW = (fail / maxFail) * 100
         return (
           <div key={key}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -229,7 +229,6 @@ function ErroresChart({ rows }) {
                 </span>
               </div>
             </div>
-            {/* Barra bicolor: fallo (rojo) + ok (verde) */}
             <div style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', background: 'var(--surface-2)' }}>
               <div style={{ width: `${failPct}%`, background: '#ef4444', transition: 'width 0.5s ease' }} />
               <div style={{ width: `${100 - failPct}%`, background: '#10b981', opacity: 0.35, transition: 'width 0.5s ease' }} />
