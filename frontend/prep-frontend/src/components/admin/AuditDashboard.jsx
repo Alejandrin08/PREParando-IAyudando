@@ -6,45 +6,45 @@ const pct = (a, b) => (b === 0 ? '0' : ((a / b) * 100).toFixed(1))
 const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 const STATUS_LABELS = {
-  Pending:              'Pendiente',
-  InReview:             'En revisión',
-  Approved:             'Aprobada',
-  Rejected:             'Rechazada',
-  RejectedByCapturista: 'En verificación',
+  Pending: 'Acta pendiente',
+  InReview: 'Acta en revisión',
+  Approved: 'Acta aprobada',
+  Rejected: 'Acta rechazada',
+  RejectedByCapturista: 'Acta en verificación',
 }
 const STATUS_COLOR = {
-  Pending:              '#6366f1',
-  InReview:             '#f59e0b',
-  Approved:             '#10b981',
-  Rejected:             '#ef4444',
+  Pending: '#6366f1',
+  InReview: '#f59e0b',
+  Approved: '#10b981',
+  Rejected: '#ef4444',
   RejectedByCapturista: '#8b5cf6',
 }
 
 // Motivos exactos por categoría
 const MOTIVOS_NO_CONT = {
-  ExcedeLN:        'Excede lista nominal',
-  TodosIlegibles:  'Todos los campos ilegibles o sin dato',
-  SinActa:         'Sin acta',
+  ExcedeLN: 'Excede lista nominal',
+  TodosIlegibles: 'Todos los campos ilegibles o sin dato',
+  SinActa: 'Sin acta',
 }
 const MOTIVOS_CONT = {
-  Normal:          'Normal',
-  SinDato:         'Sin dato',
+  Normal: 'Normal',
+  SinDato: 'Sin dato',
   CamposIlegibles: 'Con datos ilegibles',
 }
 
 // Errores aritméticos exactos
 const ERRORES_ARITMETICOS = {
-  SumaVotos:      'Suma de votos vs. total declarado',
-  TotalUrnas:     'Total de votos vs. conteo de urnas',
-  PersonasVotos:  'Personas que votaron vs. votos en urnas',
-  ExcedeNominal:  'Total de votos excede lista nominal',
+  SumaVotos: 'Suma de votos vs. total declarado',
+  TotalUrnas: 'Total de votos vs. conteo de urnas',
+  PersonasVotos: 'Personas que votaron vs. votos en urnas',
+  ExcedeNominal: 'Total de votos excede lista nominal',
 }
 
 // Niveles de confianza
 const CONF_NIVEL = (v) => {
   if (v == null) return 'Sin dato'
-  if (v > 0.85)  return 'Alta'
-  if (v > 0.60)  return 'Media'
+  if (v > 0.85) return 'Alta'
+  if (v > 0.60) return 'Media'
   return 'Baja'
 }
 const CONF_COLOR = { Alta: '#10b981', Media: '#f59e0b', Baja: '#ef4444' }
@@ -110,7 +110,7 @@ function AuditTable({ cols, rows, emptyMsg = 'Sin datos' }) {
             <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--surface-2)' }}>
               {cols.map(c => (
                 <td key={c.key} style={{ padding: '9px 12px', color: 'var(--text)', textAlign: c.right ? 'right' : 'left', fontFamily: c.mono ? 'DM Mono, monospace' : undefined, whiteSpace: 'nowrap' }}>
-                  {c.render ? c.render(row[c.key], row) : (row[c.key] ?? '—')}
+                  {c.render ? c.render(row[c.field ?? c.key], row) : (row[c.field ?? c.key] ?? '—')}
                 </td>
               ))}
             </tr>
@@ -136,80 +136,50 @@ function StatChip({ label, value, sub, color }) {
 // Stacked horizontal bar: cada grupo (No Contabilizada / Contabilizada) muestra
 // sus 3 motivos como segmentos de color. Siempre 6 filas fijas, escala con n.
 const NO_CONT_COLORS = ['#c0392b', '#e74c3c', '#f1948a']
-const CONT_COLORS    = ['#0891b2', '#06b6d4', '#67e8f9']
+const CONT_COLORS = ['#0891b2', '#06b6d4', '#67e8f9']
+
 
 function RechazadasChart({ rows }) {
   if (!rows.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Sin datos</p>
 
-  // Conteos por categoría + motivo
-  const noCont = Object.fromEntries(Object.keys(MOTIVOS_NO_CONT).map(k => [k, 0]))
-  const cont   = Object.fromEntries(Object.keys(MOTIVOS_CONT).map(k => [k, 0]))
+  const counts = Object.fromEntries(Object.keys(MOTIVOS_NO_CONT).map(k => [k, 0]))
+  let sinMotivo = 0
 
   rows.forEach(r => {
-    if (r.rejectionCategory === 'NoContabilizada' && noCont[r.rejectionReason] !== undefined)
-      noCont[r.rejectionReason]++
-    if (r.rejectionCategory === 'Contabilizada' && cont[r.rejectionReason] !== undefined)
-      cont[r.rejectionReason]++
+    if (counts[r.rejectionReason] !== undefined) counts[r.rejectionReason]++
+    else sinMotivo++
   })
 
-  const totalNC = Object.values(noCont).reduce((a, b) => a + b, 0)
-  const totalC  = Object.values(cont).reduce((a, b)  => a + b, 0)
-  const grand   = totalNC + totalC || 1
-
-  const renderGroup = (label, counts, labels, colors, total) => {
-    const entries = Object.entries(counts)
-    return (
-      <div style={{ marginBottom: 18 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
-          <span style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>
-            {fmt(total)} · {pct(total, grand)}% del total
-          </span>
-        </div>
-        {/* Stacked bar */}
-        <div style={{ display: 'flex', height: 14, borderRadius: 99, overflow: 'hidden', background: 'var(--surface-2)' }}>
-          {entries.map(([key, count], i) => (
-            <div key={key}
-              style={{ width: `${pct(count, grand)}%`, background: colors[i], transition: 'width 0.5s ease', minWidth: count > 0 ? 2 : 0 }}
-              title={`${labels[key]}: ${fmt(count)}`}
-            />
-          ))}
-        </div>
-        {/* Legend inline */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 14px', marginTop: 6 }}>
-          {entries.map(([key, count], i) => (
-            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: colors[i], flexShrink: 0 }} />
-              <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{labels[key]} <strong style={{ color: 'var(--text)' }}>{fmt(count)}</strong></span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
+  const total = rows.length || 1
+  const colors = { ExcedeLN: '#c0392b', TodosIlegibles: '#e74c3c', SinActa: '#f1948a' }
 
   return (
-    <div>
-      {renderGroup('No contabilizadas', noCont, MOTIVOS_NO_CONT, NO_CONT_COLORS, totalNC)}
-      {renderGroup('Contabilizadas',    cont,   MOTIVOS_CONT,    CONT_COLORS,    totalC)}
-      {/* Proportional overview bar */}
-      <div style={{ marginTop: 6 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-          <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Proporción general</span>
-        </div>
-        <div style={{ display: 'flex', height: 20, borderRadius: 8, overflow: 'hidden' }}>
-          <div style={{ width: `${pct(totalNC, grand)}%`, background: '#c0392b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {totalNC > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{pct(totalNC, grand)}%</span>}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {Object.entries(counts).map(([key, count]) => (
+        <div key={key}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{MOTIVOS_NO_CONT[key]}</span>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+              <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: colors[key], fontWeight: 700 }}>{fmt(count)}</span>
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{pct(count, total)}%</span>
+            </div>
           </div>
-          <div style={{ width: `${pct(totalC, grand)}%`, background: '#0891b2', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {totalC > 0 && <span style={{ fontSize: 10, fontWeight: 700, color: '#fff' }}>{pct(totalC, grand)}%</span>}
+          <div style={{ height: 10, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(count / total) * 100}%`, background: colors[key], borderRadius: 99, transition: 'width 0.5s ease' }} />
           </div>
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-          <span style={{ fontSize: 10, color: '#c0392b', fontWeight: 600 }}>No contabilizadas</span>
-          <span style={{ fontSize: 10, color: '#0891b2', fontWeight: 600 }}>Contabilizadas</span>
+      ))}
+      {sinMotivo > 0 && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)' }}>Sin motivo registrado</span>
+            <span style={{ fontSize: 12, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)' }}>{fmt(sinMotivo)}</span>
+          </div>
+          <div style={{ height: 10, background: 'var(--surface-2)', borderRadius: 99, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(sinMotivo / total) * 100}%`, background: 'var(--border)', borderRadius: 99 }} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }
@@ -227,12 +197,12 @@ function ErroresChart({ rows }) {
   rows.forEach(r => {
     const errs = r.arithmeticErrors ?? {}
     Object.keys(ERRORES_ARITMETICOS).forEach(k => {
-      if (errs[k] === true)       counts[k].fail++
+      if (errs[k] === true) counts[k].fail++
       else if (errs[k] === false) counts[k].pass++
       else {
         // fallback: si no hay detalle, marca todo como fallo si !arithmeticValidationOk
         if (!r.arithmeticValidationOk) counts[k].fail++
-        else                            counts[k].pass++
+        else counts[k].pass++
       }
     })
   })
@@ -243,9 +213,9 @@ function ErroresChart({ rows }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {Object.entries(ERRORES_ARITMETICOS).map(([key, label], i) => {
         const { fail, pass } = counts[key]
-        const total   = fail + pass
+        const total = fail + pass
         const failPct = total === 0 ? 0 : (fail / total) * 100
-        const barW    = (fail / maxFail) * 100
+        const barW = (fail / maxFail) * 100
         return (
           <div key={key}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -290,14 +260,14 @@ function ConfianzaChart({ rows }) {
   // Conteo por nivel
   const nivel = { Alta: 0, Media: 0, Baja: 0 }
   rows.forEach(r => { nivel[CONF_NIVEL(r.globalConfidence)]++ })
-  const total  = rows.length
+  const total = rows.length
   const maxNiv = Math.max(...Object.values(nivel), 1)
 
   // Histogram bins (10 deciles de globalConfidence)
   const bins = Array.from({ length: 10 }, () => ({ Alta: 0, Media: 0, Baja: 0 }))
   rows.forEach(r => {
     const conf = r.globalConfidence ?? 0
-    const bin  = Math.min(Math.floor(conf * 10), 9)
+    const bin = Math.min(Math.floor(conf * 10), 9)
     bins[bin][CONF_NIVEL(r.globalConfidence)]++
   })
   const maxBin = Math.max(...bins.map(b => b.Alta + b.Media + b.Baja), 1)
@@ -315,7 +285,7 @@ function ConfianzaChart({ rows }) {
         </p>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 110 }}>
           {bins.map((bin, i) => {
-            const t    = bin.Alta + bin.Media + bin.Baja
+            const t = bin.Alta + bin.Media + bin.Baja
             const totH = (t / maxBin) * 100
             return (
               <div key={i} title={`${i * 10}–${(i + 1) * 10}%: ${t} actas`}
@@ -323,9 +293,9 @@ function ConfianzaChart({ rows }) {
                 {t > 0 && <span style={{ fontSize: 8, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)', marginBottom: 1 }}>{t}</span>}
                 <div style={{ width: '100%', height: `${totH}%`, display: 'flex', flexDirection: 'column-reverse', borderRadius: '3px 3px 0 0', overflow: 'hidden' }}>
                   {/* apilado: Baja abajo, Media medio, Alta arriba */}
-                  <div style={{ width: '100%', flex: bin.Baja,  background: CONF_COLOR.Baja  }} />
+                  <div style={{ width: '100%', flex: bin.Baja, background: CONF_COLOR.Baja }} />
                   <div style={{ width: '100%', flex: bin.Media, background: CONF_COLOR.Media }} />
-                  <div style={{ width: '100%', flex: bin.Alta,  background: CONF_COLOR.Alta  }} />
+                  <div style={{ width: '100%', flex: bin.Alta, background: CONF_COLOR.Alta }} />
                 </div>
               </div>
             )
@@ -411,9 +381,9 @@ function DrawerTrigger({ open, onToggle, counts }) {
 
 // ─── Drawer ───────────────────────────────────────────────────────────────────
 const DRAWER_ITEMS = [
-  { key: 'rejected',  label: 'Rechazadas',      countKey: 'rejected' },
-  { key: 'errors',    label: 'Errores aritmét.', countKey: 'errors'   },
-  { key: 'confianza', label: 'Confianza',        countKey: 'lowConf'  },
+  { key: 'rejected', label: 'Rechazadas', countKey: 'rejected' },
+  { key: 'errors', label: 'Errores aritmét.', countKey: 'errors' },
+  { key: 'confianza', label: 'Confianza', countKey: 'lowConf' },
 ]
 
 function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
@@ -423,10 +393,10 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
   const counts = { rejected: withRejection.length, errors: withErrors.length, lowConf: lowConf.length }
 
   const rejNC = withRejection.filter(r => r.rejectionCategory === 'NoContabilizada').length
-  const rejC  = withRejection.filter(r => r.rejectionCategory === 'Contabilizada').length
+  const rejC = withRejection.filter(r => r.rejectionCategory === 'Contabilizada').length
 
   const highQueue = withErrors.filter(r => r.assignedQueue === 'High').length
-  const avgConf   = withErrors.length
+  const avgConf = withErrors.length
     ? (withErrors.reduce((s, r) => s + (r.globalConfidence ?? 0), 0) / withErrors.length * 100).toFixed(0)
     : '—'
 
@@ -471,9 +441,13 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
           {activeTab === 'rejected' && (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                <StatChip label="Total rechazadas"   value={fmt(withRejection.length)} color="#a32d2d" sub="con motivo registrado" />
-                <StatChip label="No contabilizadas"  value={fmt(rejNC)} color="#c0392b" sub={`${pct(rejNC, withRejection.length)}%`} />
-                <StatChip label="Contabilizadas"     value={fmt(rejC)}  color="#0891b2" sub={`${pct(rejC, withRejection.length)}%`} />
+                <StatChip label="Total rechazadas" value={fmt(withRejection.length)} color="#a32d2d" sub="con motivo registrado" />
+                {Object.entries(MOTIVOS_NO_CONT).map(([key, label]) => {
+                  const count = withRejection.filter(r => r.rejectionReason === key).length
+                  return (
+                    <StatChip key={key} label={label} value={fmt(count)} sub={`${pct(count, withRejection.length)}%`} />
+                  )
+                })}
               </div>
               <RechazadasChart rows={withRejection} />
             </>
@@ -482,9 +456,9 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
           {activeTab === 'errors' && (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                <StatChip label="Total con error"  value={fmt(withErrors.length)} color="#854f0b" sub="actas con al menos un error" />
-                <StatChip label="Cola alta"        value={fmt(highQueue)}         sub={`${pct(highQueue, withErrors.length)}% del grupo`} />
-                <StatChip label="Confianza prom."  value={`${avgConf}%`}          sub="dentro del grupo" />
+                <StatChip label="Total con error" value={fmt(withErrors.length)} color="#854f0b" sub="actas con al menos un error" />
+                <StatChip label="Cola alta" value={fmt(highQueue)} sub={`${pct(highQueue, withErrors.length)}% del grupo`} />
+                <StatChip label="Confianza prom." value={`${avgConf}%`} sub="dentro del grupo" />
               </div>
               <ErroresChart rows={withErrors} />
             </>
@@ -493,9 +467,9 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
           {activeTab === 'confianza' && (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                <StatChip label="Alta  (>85%)"    value={fmt(nivelCounts.Alta)}  color="#10b981" sub={`${pct(nivelCounts.Alta, allFiltered.length)}%`} />
-                <StatChip label="Media (60–85%)"  value={fmt(nivelCounts.Media)} color="#f59e0b" sub={`${pct(nivelCounts.Media, allFiltered.length)}%`} />
-                <StatChip label="Baja  (<60%)"    value={fmt(nivelCounts.Baja)}  color="#ef4444" sub={`${pct(nivelCounts.Baja, allFiltered.length)}%`} />
+                <StatChip label="Alta  (>85%)" value={fmt(nivelCounts.Alta)} color="#10b981" sub={`${pct(nivelCounts.Alta, allFiltered.length)}%`} />
+                <StatChip label="Media (60–85%)" value={fmt(nivelCounts.Media)} color="#f59e0b" sub={`${pct(nivelCounts.Media, allFiltered.length)}%`} />
+                <StatChip label="Baja  (<60%)" value={fmt(nivelCounts.Baja)} color="#ef4444" sub={`${pct(nivelCounts.Baja, allFiltered.length)}%`} />
               </div>
               <ConfianzaChart rows={allFiltered} />
             </>
@@ -509,9 +483,9 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AuditDashboard() {
-  const [data,       setData]       = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [filter,     setFilter]     = useState({ entity: '', status: '', dateFrom: '', dateTo: '' })
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState({ entity: '', status: '', dateFrom: '', dateTo: '' })
   const [drawerOpen, setDrawerOpen] = useState(false)
   const printRef = useRef()
 
@@ -561,10 +535,10 @@ export default function AuditDashboard() {
   const total = dashboard.totalActas || 0
 
   const filtered = actas.filter(a => {
-    if (filter.entity   && !a.entity?.toLowerCase().includes(filter.entity.toLowerCase())) return false
-    if (filter.status   && a.status !== filter.status) return false
+    if (filter.entity && !a.entity?.toLowerCase().includes(filter.entity.toLowerCase())) return false
+    if (filter.status && a.status !== filter.status) return false
     if (filter.dateFrom && new Date(a.ingestedAt) < new Date(filter.dateFrom)) return false
-    if (filter.dateTo   && new Date(a.ingestedAt) > new Date(filter.dateTo + 'T23:59:59')) return false
+    if (filter.dateTo && new Date(a.ingestedAt) > new Date(filter.dateTo + 'T23:59:59')) return false
     return true
   })
 
@@ -573,10 +547,10 @@ export default function AuditDashboard() {
       const key = a.entity || 'Sin entidad'
       if (!acc[key]) acc[key] = { entity: key, total: 0, approved: 0, rejected: 0, pending: 0, errors: 0 }
       acc[key].total++
-      if (a.status === 'Approved')      acc[key].approved++
+      if (a.status === 'Approved') acc[key].approved++
       else if (a.status === 'Rejected') acc[key].rejected++
-      else                               acc[key].pending++
-      if (!a.arithmeticValidationOk)    acc[key].errors++
+      else acc[key].pending++
+      if (!a.arithmeticValidationOk) acc[key].errors++
       return acc
     }, {})
   ).sort((a, b) => b.total - a.total)
@@ -587,7 +561,7 @@ export default function AuditDashboard() {
       .reduce((acc, a) => {
         const key = a.approvedBy
         if (!acc[key]) acc[key] = { user: key, approved: 0, rejected: 0, lastAction: null }
-        if (a.status === 'Approved')      acc[key].approved++
+        if (a.status === 'Approved') acc[key].approved++
         else if (a.status === 'Rejected') acc[key].rejected++
         if (!acc[key].lastAction || new Date(a.approvedAt) > new Date(acc[key].lastAction))
           acc[key].lastAction = a.approvedAt
@@ -596,8 +570,8 @@ export default function AuditDashboard() {
   ).sort((a, b) => (b.approved + b.rejected) - (a.approved + a.rejected))
 
   const withRejection = filtered.filter(a => a.rejectionReason)
-  const withErrors    = filtered.filter(a => !a.arithmeticValidationOk)
-  const lowConf       = filtered.filter(a => (a.globalConfidence ?? 1) < 0.60)
+  const withErrors = filtered.filter(a => !a.arithmeticValidationOk)
+  const lowConf = filtered.filter(a => (a.globalConfidence ?? 1) < 0.60)
 
   const reportDate = new Date().toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })
 
@@ -660,16 +634,16 @@ export default function AuditDashboard() {
 
         {/* KPIs */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <KpiCard label="Total actas"         value={filtered.length}                                        color="var(--accent)" sub={`de ${fmt(total)} en sistema`} />
-          <KpiCard label="Aprobadas"           value={filtered.filter(a => a.status === 'Approved').length}   color="#10b981"       sub={`${pct(filtered.filter(a => a.status === 'Approved').length, filtered.length)}% del filtro`} />
-          <KpiCard label="Rechazadas"          value={filtered.filter(a => a.status === 'Rejected').length}   color="#ef4444"       sub={`${pct(filtered.filter(a => a.status === 'Rejected').length, filtered.length)}% del filtro`} />
-          <KpiCard label="Errores aritméticos" value={withErrors.length}                                      color="#f59e0b"       sub={`${pct(withErrors.length, filtered.length)}% del filtro`} />
+          <KpiCard label="Total actas" value={filtered.length} color="var(--accent)" sub={`de ${fmt(total)} en sistema`} />
+          <KpiCard label="Actas aprobadas" value={filtered.filter(a => a.status === 'Approved').length} color="#10b981" sub={`${pct(filtered.filter(a => a.status === 'Approved').length, filtered.length)}% del filtro`} />
+          <KpiCard label="Actas rechazadas" value={filtered.filter(a => a.status === 'Rejected').length} color="#ef4444" sub={`${pct(filtered.filter(a => a.status === 'Rejected').length, filtered.length)}% del filtro`} />
+          <KpiCard label="Errores aritméticos" value={withErrors.length} color="#f59e0b" sub={`${pct(withErrors.length, filtered.length)}% del filtro`} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <KpiCard label="Pendientes"          value={filtered.filter(a => a.status === 'Pending').length}                                                             color="#6366f1" />
-          <KpiCard label="En revisión"         value={filtered.filter(a => a.status === 'InReview' || a.status === 'RejectedByCapturista').length}                     color="#8b5cf6" />
-          <KpiCard label="Confianza baja"      value={lowConf.length}                                                                                                  color="#ef4444" sub="< 60% de confianza" />
-          <KpiCard label="Cola alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length}                                                         color="#ec4899" />
+          <KpiCard label="Actas pendientes" value={filtered.filter(a => a.status === 'Pending').length} color="#6366f1" />
+          <KpiCard label="Actas en revisión" value={filtered.filter(a => a.status === 'InReview' || a.status === 'RejectedByCapturista').length} color="#8b5cf6" />
+          <KpiCard label="Actas con confianza baja" value={lowConf.length} color="#ef4444" sub="< 60% de confianza" />
+          <KpiCard label="Actas en cola alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length} color="#ec4899" />
         </div>
 
         {/* Distribución + Usuarios */}
@@ -683,9 +657,9 @@ export default function AuditDashboard() {
           <Section title="Actividad por usuario">
             <AuditTable
               cols={[
-                { key: 'user',       label: 'Usuario' },
-                { key: 'approved',   label: 'Aprobadas',    right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-                { key: 'rejected',   label: 'Rechazadas',   right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
+                { key: 'user', label: 'Usuario' },
+                { key: 'approved', label: 'Actas aprobadas', right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
+                { key: 'rejected', label: 'Actas rechazadas', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
                 { key: 'lastAction', label: 'Última acción', render: v => fmtDate(v) },
               ]}
               rows={byUser}
@@ -698,13 +672,13 @@ export default function AuditDashboard() {
         <Section title="Resumen por entidad / municipio">
           <AuditTable
             cols={[
-              { key: 'entity',   label: 'Entidad' },
-              { key: 'total',    label: 'Total',           right: true, mono: true },
-              { key: 'approved', label: 'Aprobadas',       right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-              { key: 'rejected', label: 'Rechazadas',      right: true, mono: true, render: v => <span style={{ color: v > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: v > 0 ? 600 : 400 }}>{fmt(v)}</span> },
-              { key: 'pending',  label: 'Pendientes',      right: true, mono: true },
-              { key: 'errors',   label: 'Err. aritmético', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
-              { key: 'total',    label: 'Tasa aprobación', right: true, render: (v, row) => `${pct(row.approved, row.total)}%` },
+              { key: 'entity', label: 'Entidad' },
+              { key: 'total_1', label: 'Total', field: 'total', right: true, mono: true },
+              { key: 'approved', label: 'Actas aprobadas', right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
+              { key: 'rejected', label: 'Actas rechazadas', right: true, mono: true, render: v => <span style={{ color: v > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: v > 0 ? 600 : 400 }}>{fmt(v)}</span> },
+              { key: 'pending', label: 'Actas pendientes', right: true, mono: true },
+              { key: 'errors', label: 'Errores aritméticos', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
+              { key: 'total_2', label: 'Tasa de aprobación', field: 'total', right: true, render: (v, row) => `${pct(row.approved, row.total)}%` },
             ]}
             rows={byEntity}
             emptyMsg="Sin actas con los filtros actuales"

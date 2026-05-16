@@ -4,17 +4,25 @@
 @tailwind components;
 @tailwind utilities;
 
+
 :root {
-  --bg: #f8f7f4;
+  --bg: #f0f4ff;
   --surface: #ffffff;
-  --surface-2: #f2f1ee;
-  --border: #e4e2dc;
-  --text: #1a1917;
-  --text-muted: #6b6860;
-  --accent: #d4380d;
-  --accent-2: #1d4ed8;
-  --success: #15803d;
-  --warning: #b45309;
+  --surface-2: #e0e8ff;
+  --border: #7b8cde;
+  --text: #0d0f2b;
+  --text-muted: #3a4480;
+  --accent: #1a2fa8;
+  --accent-2: #6d28d9;
+  --success: #14532d;
+  --warning: #78350f;
+
+  /* Variables nuevas que faltaban ↓ */
+  --accent-bg: #e0e8ff;       /* Azul suave para fondo del counter */
+  --accent-border: #1a2fa8;   /* Igual al accent para hover */
+  --text-h: #0d0f2b;          /* Mismo que --text, headings */
+  --social-bg: #e0e8ff;       /* Fondo de botones sociales */
+  --shadow: 0 4px 12px rgba(26, 47, 168, 0.25); /* Sombra azul */
 }
 
 body {

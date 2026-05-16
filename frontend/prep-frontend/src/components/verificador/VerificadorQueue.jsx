@@ -121,7 +121,7 @@ export default function VerificadorQueue() {
                   </td>
                   <td style={{ color: 'var(--text-muted)', fontFamily: 'DM Mono, monospace' }}
                     className="px-5 py-3.5 text-sm">{acta.section || '—'}</td>
-                  <td className="px-5 py-3.5"><StatusBadge value={acta.status} /></td>
+                  <td className="px-5 py-4"><StatusBadge value={acta.status} /></td>
                   <td style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}
                     className="px-5 py-3.5 text-sm">
                     {(acta.globalConfidence * 100).toFixed(0)}%
