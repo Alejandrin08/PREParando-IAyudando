@@ -776,6 +776,7 @@ export default function ActaDetail({ mode = 'capturista' }) {
               className="text-sm px-3 py-1.5 rounded-lg hover:bg-[var(--surface-2)] transition-colors">
               ← Volver
             </button>
+            
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 style={{ color: 'var(--text)' }} className="text-xl font-semibold">Acta #{acta.id}</h1>
@@ -833,6 +834,8 @@ export default function ActaDetail({ mode = 'capturista' }) {
             </div>
           )}
         </div>
+
+        
 
         {isVerificador && (
           <div style={{ background: '#f5f3ff', border: '1px solid #c4b5fd', borderRadius: 10, padding: '8px 14px', display: 'flex', gap: 10, alignItems: 'flex-start', marginTop: 10 }}>

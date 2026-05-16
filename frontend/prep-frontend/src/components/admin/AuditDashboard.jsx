@@ -7,11 +7,11 @@ const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { day: '2-digit',
 const fmtDateShort = (d) => d ? new Date(d).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 
 const STATUS_LABELS = {
-  Pending:              'Pendiente',
-  InReview:             'En revisión',
-  Approved:             'Aprobada',
-  Rejected:             'Rechazada',
-  RejectedByCapturista: 'En verificación',
+  Pending:              'Acta pendiente',
+  InReview:             'Acta en revisión',
+  Approved:             'Acta aprobada',
+  Rejected:             'Acta rechazada',
+  RejectedByCapturista: 'Acta en verificación',
 }
 const STATUS_COLOR = {
   Pending:              '#6366f1',
@@ -252,14 +252,14 @@ export default function AuditDashboard() {
         <div className="no-print" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 20px' }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Filtros</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <input placeholder="Entidad / municipio"
+            <input placeholder="Distrito "
               value={filter.entity}
               onChange={e => setFilter(f => ({ ...f, entity: e.target.value }))}
               style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, width: 200 }} />
             <select value={filter.status}
               onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
               style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13 }}>
-              <option value="">Todos los estados</option>
+              <option value="">Todos los distritos</option>
               {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
             <input type="date" value={filter.dateFrom}
@@ -282,20 +282,20 @@ export default function AuditDashboard() {
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           <KpiCard label="Total actas" value={filtered.length} color="var(--accent)" sub={`de ${fmt(total)} en sistema`} />
-          <KpiCard label="Aprobadas" value={filtered.filter(a => a.status === 'Approved').length} color="#10b981" sub={`${pct(filtered.filter(a => a.status === 'Approved').length, filtered.length)}% del filtro`} />
-          <KpiCard label="Rechazadas" value={filtered.filter(a => a.status === 'Rejected').length} color="#ef4444" sub={`${pct(filtered.filter(a => a.status === 'Rejected').length, filtered.length)}% del filtro`} />
+          <KpiCard label="Actas aprobadas" value={filtered.filter(a => a.status === 'Approved').length} color="#10b981" sub={`${pct(filtered.filter(a => a.status === 'Approved').length, filtered.length)}% del filtro`} />
+          <KpiCard label="Actas rechazadas" value={filtered.filter(a => a.status === 'Rejected').length} color="#ef4444" sub={`${pct(filtered.filter(a => a.status === 'Rejected').length, filtered.length)}% del filtro`} />
           <KpiCard label="Errores aritméticos" value={filtered.filter(a => !a.arithmeticValidationOk).length} color="#f59e0b" sub={`${pct(filtered.filter(a => !a.arithmeticValidationOk).length, filtered.length)}% del filtro`} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-          <KpiCard label="Pendientes" value={filtered.filter(a => a.status === 'Pending').length} color="#6366f1" />
-          <KpiCard label="En revisión" value={filtered.filter(a => a.status === 'InReview' || a.status === 'RejectedByCapturista').length} color="#8b5cf6" />
-          <KpiCard label="Confianza baja" value={filtered.filter(a => a.confidenceLevel === 'Low').length} color="#ec4899" sub="Requieren atención" />
-          <KpiCard label="Cola alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length} color="#ef4444" />
+          <KpiCard label="Actas pendientes" value={filtered.filter(a => a.status === 'Pending').length} color="#6366f1" />
+          <KpiCard label="Actas en revisión" value={filtered.filter(a => a.status === 'InReview' || a.status === 'RejectedByCapturista').length} color="#8b5cf6" />
+          <KpiCard label="Actas con confianza baja" value={filtered.filter(a => a.confidenceLevel === 'Low').length} color="#ec4899" sub="Requieren atención" />
+          <KpiCard label="Actas en cola de alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length} color="#ef4444" />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
 
-          <Section title="Distribución por estado" >
+          <Section title="Distribución por distrito" >
             {Object.entries(STATUS_LABELS).map(([status, label]) => {
               const count = filtered.filter(a => a.status === status).length
               return (
@@ -326,16 +326,16 @@ export default function AuditDashboard() {
           </Section>
         </div>
 
-        <Section title="Resumen por entidad / municipio">
+        <Section title="Resumen por distrito">
           <AuditTable
             cols={[
               { key: 'entity', label: 'Entidad' },
-              { key: 'total',    label: 'Total',    right: true, mono: true },
-              { key: 'approved', label: 'Aprobadas', right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-              { key: 'rejected', label: 'Rechazadas', right: true, mono: true, render: v => <span style={{ color: v > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: v > 0 ? 600 : 400 }}>{fmt(v)}</span> },
-              { key: 'pending',  label: 'Pendientes', right: true, mono: true },
-              { key: 'errors',   label: 'Err. aritmético', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
-              { key: 'total',    label: 'Tasa aprobación', right: true, render: (v, row) => `${pct(row.approved, row.total)}%` },
+              { key: 'total',    label: 'Actas totales',    right: true, mono: true },
+              { key: 'approved', label: 'Actas aprobadas', right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
+              { key: 'rejected', label: 'Actas rechazadas', right: true, mono: true, render: v => <span style={{ color: v > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: v > 0 ? 600 : 400 }}>{fmt(v)}</span> },
+              { key: 'pending',  label: 'Actas pendientes', right: true, mono: true },
+              { key: 'errors',   label: 'Errores aritméticos', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
+              { key: 'total',    label: 'Tasa de aprobación', right: true, render: (v, row) => `${pct(row.approved, row.total)}%` },
             ]}
             rows={byEntity}
             emptyMsg="Sin actas con los filtros actuales"
@@ -346,8 +346,8 @@ export default function AuditDashboard() {
           <AuditTable
             cols={[
               { key: 'user',       label: 'Usuario / correo' },
-              { key: 'approved',   label: 'Aprobadas',  right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-              { key: 'rejected',   label: 'Rechazadas', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
+              { key: 'approved',   label: 'Actas aprobadas',  right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
+              { key: 'rejected',   label: 'Actas rechazadas', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
               { key: 'lastAction', label: 'Última acción', render: v => fmtDate(v) },
             ]}
             rows={byUser}
