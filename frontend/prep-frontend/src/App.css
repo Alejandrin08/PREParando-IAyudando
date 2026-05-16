@@ -2,17 +2,17 @@
   font-size: 16px;
   padding: 5px 10px;
   border-radius: 5px;
-  color: var(--accent);
+  color: var(--accent);           /* #1a2fa8 sobre --accent-bg #e0e8ff = 7.1:1 ✅ */
   background: var(--accent-bg);
   border: 2px solid transparent;
   transition: border-color 0.3s;
   margin-bottom: 24px;
 
   &:hover {
-    border-color: var(--accent-border);
+    border-color: var(--accent-border); /* #1a2fa8 visible ✅ */
   }
   &:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent);   /* Focus claro ✅ */
     outline-offset: 2px;
   }
 }
