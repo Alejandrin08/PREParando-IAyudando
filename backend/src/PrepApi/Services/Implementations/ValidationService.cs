@@ -50,13 +50,15 @@ namespace PrepApi.Services.Implementations
         public List<ActaValidation> Validate(ExtractionResult extraction)
         {
             var validations = new List<ActaValidation>();
+            var seccionField = extraction.Fields.FirstOrDefault(f => f.Name == "seccion");
             var fields = extraction.Fields.ToDictionary(f => f.Name, f => f.Value);
 
             validations.Add(ValidateTotalVotes(fields));
             validations.Add(ValidateTotalMatchesUrnas(fields));
             validations.Add(ValidatePersonasMatchUrnas(fields));
+            validations.Add(ValidateNoFieldExceedsNominal(fields, seccionField?.Value));
             validations.AddRange(ValidateNumberVsLetter(fields));
-
+            Console.WriteLine($"Total validations generated: {validations.Count}");
             return validations;
         }
 
@@ -195,6 +197,7 @@ namespace PrepApi.Services.Implementations
                     : $"total_votos {total} exceeds lista_nominal {listaNominal}"
             };
         }
+
 
         private static bool TryGetInt(Dictionary<string, string?> fields, string key, out int value)
         {
