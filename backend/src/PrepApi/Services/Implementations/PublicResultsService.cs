@@ -159,7 +159,7 @@ namespace PrepApi.Services.Implementations
                 Status = acta.Status,
                 PublicStatus = publicStatus,
                 PublicStatusDetail = publicDetail,
-                ImageUrl = $"https://prepactasstorage.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
+                ImageUrl = $"https://prepactasstoragedos.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
                 GlobalConfidence = acta.GlobalConfidence,
                 IngestedAt = acta.IngestedAt,
                 ApprovedAt = acta.ApprovedAt,

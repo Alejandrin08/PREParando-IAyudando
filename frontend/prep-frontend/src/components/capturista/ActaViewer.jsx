@@ -1,60 +1,91 @@
 import { useEffect, useRef, useState } from 'react'
 
-export default function ActaViewer({ imageUrl, fields, selectedField }) {
+// Pre-parse and cache polygons so we can hit-test on click
+function buildPolygons(fields, ratioX, ratioY) {
+  const result = []
+  fields.forEach(field => {
+    if (!field.boundingRegion) return
+    let region
+    try { region = JSON.parse(field.boundingRegion) } catch { return }
+    const flat = region.polygon
+    if (!flat || flat.length < 6) return
+    const points = []
+    for (let i = 0; i < flat.length; i += 2) {
+      points.push([flat[i] * ratioX, flat[i + 1] * ratioY])
+    }
+    result.push({ name: field.name, points })
+  })
+  return result
+}
+
+// Ray-casting point-in-polygon
+function pointInPolygon(x, y, points) {
+  let inside = false
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const [xi, yi] = points[i]
+    const [xj, yj] = points[j]
+    const intersect = yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi
+    if (intersect) inside = !inside
+  }
+  return inside
+}
+
+export default function ActaViewer({ imageUrl, fields, selectedField, onFieldClick, suppressDefaults }) {
   const canvasRef = useRef(null)
   const imgRef = useRef(null)
+  const polygonRef = useRef([]) // cached scaled polygons
   const [imgLoaded, setImgLoaded] = useState(false)
   const [imgError, setImgError] = useState(false)
+  const [hovered, setHovered] = useState(null)
+
+  const getRatios = () => {
+    const img = imgRef.current
+    if (!img) return { ratioX: 1, ratioY: 1 }
+    return {
+      ratioX: img.clientWidth / img.naturalWidth,
+      ratioY: img.clientHeight / img.naturalHeight,
+    }
+  }
 
   const drawPolygons = () => {
     const canvas = canvasRef.current
     const img = imgRef.current
     if (!canvas || !img || !imgLoaded) return
 
-    const naturalW = img.naturalWidth
-    const naturalH = img.naturalHeight
+    const { ratioX, ratioY } = getRatios()
+    canvas.width = img.clientWidth
+    canvas.height = img.clientHeight
 
-    const renderedW = img.clientWidth
-    const renderedH = img.clientHeight
-
-    const ratioX = renderedW / naturalW
-    const ratioY = renderedH / naturalH
-
-    canvas.width = renderedW
-    canvas.height = renderedH
+    // Rebuild polygon cache on every redraw (ratios may have changed)
+    polygonRef.current = buildPolygons(fields, ratioX, ratioY)
 
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
     fields.forEach(field => {
       if (!field.boundingRegion) return
-
       let region
-      try {
-        region = JSON.parse(field.boundingRegion)
-      } catch {
-        return
-      }
-
+      try { region = JSON.parse(field.boundingRegion) } catch { return }
       const flat = region.polygon
       if (!flat || flat.length < 6) return
 
       const points = []
       for (let i = 0; i < flat.length; i += 2) {
-        points.push([
-          flat[i] * ratioX,
-          flat[i + 1] * ratioY
-        ])
+        points.push([flat[i] * ratioX, flat[i + 1] * ratioY])
       }
 
       const isSelected = selectedField === field.name
-      const isLow = field.confidenceLevel === 'Low'
-      const isMedium = field.confidenceLevel === 'Medium'
+      const isHovered = hovered === field.name && !isSelected
+      const isLow = !suppressDefaults && field.confidenceLevel === 'Low'
+      const isMedium = !suppressDefaults && field.confidenceLevel === 'Medium'
 
       let strokeColor, fillColor
       if (isSelected) {
         strokeColor = '#34d399'
-        fillColor = 'rgba(52, 211, 153, 0.25)'
+        fillColor = 'rgba(52, 211, 153, 0.28)'
+      } else if (isHovered) {
+        strokeColor = '#818cf8'
+        fillColor = 'rgba(129, 140, 248, 0.20)'
       } else if (isLow) {
         strokeColor = '#f87171'
         fillColor = 'rgba(248, 113, 113, 0.20)'
@@ -70,39 +101,65 @@ export default function ActaViewer({ imageUrl, fields, selectedField }) {
       ctx.moveTo(points[0][0], points[0][1])
       points.slice(1).forEach(([x, y]) => ctx.lineTo(x, y))
       ctx.closePath()
-
       ctx.fillStyle = fillColor
       ctx.fill()
       ctx.strokeStyle = strokeColor
-      ctx.lineWidth = isSelected ? 2.5 : 1.5
+      ctx.lineWidth = isSelected ? 2.5 : isHovered ? 2 : 1.5
       ctx.stroke()
 
-      if (isSelected || isLow) {
+      if (isSelected || isLow || isHovered) {
         const labelX = points[0][0]
         const labelY = points[0][1] - 5
-
         ctx.font = 'bold 10px monospace'
         const text = `${field.name} (${(field.confidence * 100).toFixed(0)}%)`
         const metrics = ctx.measureText(text)
-
-        ctx.fillStyle = isSelected ? 'rgba(52,211,153,0.9)' : 'rgba(248,113,113,0.9)'
+        ctx.fillStyle = isSelected ? 'rgba(52,211,153,0.9)' : isHovered ? 'rgba(129,140,248,0.9)' : 'rgba(248,113,113,0.9)'
         ctx.fillRect(labelX - 2, labelY - 11, metrics.width + 4, 14)
-
         ctx.fillStyle = '#09090b'
         ctx.fillText(text, labelX, labelY)
       }
     })
   }
 
-  useEffect(() => {
-    drawPolygons()
-  }, [imgLoaded, fields, selectedField])
+  // Redraw whenever selection, hover, or image state changes
+  useEffect(() => { drawPolygons() }, [imgLoaded, fields, selectedField, hovered])
 
   useEffect(() => {
     const handleResize = () => drawPolygons()
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
-  }, [imgLoaded, fields, selectedField])
+  }, [imgLoaded, fields, selectedField, hovered])
+
+  // Hit-test helpers — get canvas-relative coords from a mouse event
+  const getCanvasPos = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect()
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top }
+  }
+
+  const hitField = (e) => {
+    const { x, y } = getCanvasPos(e)
+    // Search in reverse so topmost (last drawn) wins
+    const polys = [...polygonRef.current].reverse()
+    const hit = polys.find(p => pointInPolygon(x, y, p.points))
+    return hit?.name ?? null
+  }
+
+  const handleCanvasClick = (e) => {
+    if (!onFieldClick) return
+    const name = hitField(e)
+    if (name) onFieldClick(name)
+  }
+
+  const handleCanvasMouseMove = (e) => {
+    const name = hitField(e)
+    setHovered(name)
+    canvasRef.current.style.cursor = name ? 'pointer' : 'default'
+  }
+
+  const handleCanvasMouseLeave = () => {
+    setHovered(null)
+    if (canvasRef.current) canvasRef.current.style.cursor = 'default'
+  }
 
   if (imgError) return (
     <div className="border border-zinc-800 rounded-lg p-8 text-center bg-zinc-900">
@@ -111,8 +168,9 @@ export default function ActaViewer({ imageUrl, fields, selectedField }) {
   )
 
   return (
-    <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900">
-      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+    <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-900" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-zinc-800 flex items-center justify-between" style={{ flexShrink: 0 }}>
         <p className="text-xs font-mono text-zinc-500 uppercase tracking-widest">
           Imagen del acta · detección ICR
         </p>
@@ -120,6 +178,10 @@ export default function ActaViewer({ imageUrl, fields, selectedField }) {
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block" />
             <span className="text-zinc-500">Seleccionado</span>
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-400 inline-block" />
+            <span className="text-zinc-500">Hover</span>
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" />
@@ -132,7 +194,8 @@ export default function ActaViewer({ imageUrl, fields, selectedField }) {
         </div>
       </div>
 
-      <div className="relative overflow-auto max-h-[600px]">
+      {/* Image + Canvas overlay */}
+      <div style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
         <div className="relative inline-block w-full">
           <img
             ref={imgRef}
@@ -145,31 +208,37 @@ export default function ActaViewer({ imageUrl, fields, selectedField }) {
           />
           <canvas
             ref={canvasRef}
-            className="absolute top-0 left-0 pointer-events-none"
+            onClick={handleCanvasClick}
+            onMouseMove={handleCanvasMouseMove}
+            onMouseLeave={handleCanvasMouseLeave}
             style={{
+              position: 'absolute', top: 0, left: 0,
               display: imgLoaded ? 'block' : 'none',
-              width: '100%',
-              height: '100%'
+              width: '100%', height: '100%',
+              // pointer-events ON so we receive clicks
             }}
           />
           {!imgLoaded && !imgError && (
             <div className="absolute inset-0 flex items-center justify-center bg-zinc-900">
-              <span className="font-mono text-xs text-zinc-500 animate-pulse">
-                Cargando imagen...
-              </span>
+              <span className="font-mono text-xs text-zinc-500 animate-pulse">Cargando imagen...</span>
             </div>
           )}
         </div>
       </div>
 
-      {selectedField && (
-        <div className="px-4 py-2 border-t border-zinc-800 bg-zinc-900/50">
+      {/* Footer */}
+      <div className="px-4 py-2 border-t border-zinc-800 bg-zinc-900/50" style={{ flexShrink: 0, minHeight: 32 }}>
+        {selectedField ? (
           <p className="text-xs font-mono text-emerald-400">
             Campo seleccionado: <span className="font-bold">{selectedField}</span>
-            <span className="text-zinc-500 ml-2">— haz click en otro campo de la tabla para comparar</span>
+            <span className="text-zinc-500 ml-2">— haz clic en otro campo del acta o la tabla para cambiar</span>
           </p>
-        </div>
-      )}
+        ) : (
+          <p className="text-xs font-mono text-zinc-600">
+            Haz clic en cualquier región del acta para seleccionar un campo
+          </p>
+        )}
+      </div>
     </div>
   )
 }
