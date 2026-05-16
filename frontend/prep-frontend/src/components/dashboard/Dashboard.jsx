@@ -66,7 +66,7 @@ export default function Dashboard() {
     <div className="max-w-screen-xl mx-auto px-8 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 style={{ color: 'var(--text)' }} className="text-2xl font-semibold">Dashboard</h1>
+          <h1 style={{ color: 'var(--text)' }} className="text-2xl font-semibold">Tablero de control</h1>
           <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-1">
             Estado del proceso de captura en tiempo real
           </p>
@@ -79,9 +79,9 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Stat label="Total actas" value={data?.totalActas} sublabel="recibidas" />
-        <Stat label="Pendientes" value={data?.pending} accent="#b45309" sublabel="por revisar" />
-        <Stat label="Aprobadas" value={data?.approved} accent="#15803d" sublabel="validadas" />
-        <Stat label="Rechazadas" value={data?.rejected} accent="#b91c1c" sublabel="con problemas" />
+        <Stat label="Actas pendientes" value={data?.pending} accent="#b45309" sublabel="por revisar" />
+        <Stat label="Actas aprobadas" value={data?.approved} accent="#15803d" sublabel="validadas" />
+        <Stat label="Actas rechazadas" value={data?.rejected} accent="#b91c1c" sublabel="con problemas" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -91,10 +91,10 @@ export default function Dashboard() {
             Estado del proceso
           </h2>
           <div className="space-y-3">
-            <Bar label="Pendientes" value={data?.pending} total={data?.totalActas} color="#d97706" />
-            <Bar label="En revisión" value={data?.inReview} total={data?.totalActas} color="#2563eb" />
-            <Bar label="Aprobadas" value={data?.approved} total={data?.totalActas} color="#16a34a" />
-            <Bar label="Rechazadas" value={data?.rejected} total={data?.totalActas} color="#dc2626" />
+            <Bar label="Actas pendientes" value={data?.pending} total={data?.totalActas} color="#d97706" />
+            <Bar label="Actas en revisión" value={data?.inReview} total={data?.totalActas} color="#2563eb" />
+            <Bar label="Actas aprobadas" value={data?.approved} total={data?.totalActas} color="#16a34a" />
+            <Bar label="Actas rechazadas" value={data?.rejected} total={data?.totalActas} color="#dc2626" />
           </div>
         </div>
 
@@ -105,25 +105,28 @@ export default function Dashboard() {
           </h2>
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--text-muted)' }} className="text-sm">Cola alta prioridad</span>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }} className="text-sm">Cola de actas de alta prioridad</span>
+                <p style={{ color: 'var(--text-muted)' }} className="text-xs opacity-60 mt-0.5">Actas con confianza baja o votos que exceden la lista nominal.</p>
+              </div>
               <span style={{ fontFamily: 'DM Mono, monospace', color: '#b91c1c' }}
                 className="text-lg font-medium">{data?.highQueue ?? 0}</span>
             </div>
             <div style={{ background: 'var(--border)' }} className="h-px" />
             <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--text-muted)' }} className="text-sm">Errores aritméticos</span>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }} className="text-sm">Errores aritméticos</span>
+                <p style={{ color: 'var(--text-muted)' }} className="text-xs opacity-60 mt-0.5">Actas con inconsistencias en votos totales, urnas o lista nominal.</p>
+              </div>
               <span style={{ fontFamily: 'DM Mono, monospace', color: '#b45309' }}
                 className="text-lg font-medium">{data?.withArithmeticErrors ?? 0}</span>
             </div>
             <div style={{ background: 'var(--border)' }} className="h-px" />
             <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--text-muted)' }} className="text-sm">Confianza baja</span>
-              <span style={{ fontFamily: 'DM Mono, monospace', color: '#b45309' }}
-                className="text-lg font-medium">{data?.withLowConfidence ?? 0}</span>
-            </div>
-            <div style={{ background: 'var(--border)' }} className="h-px" />
-            <div className="flex items-center justify-between">
-              <span style={{ color: 'var(--text-muted)' }} className="text-sm">Cola estándar</span>
+              <div>
+                <span style={{ color: 'var(--text-muted)' }} className="text-sm">Cola estándar</span>
+                <p style={{ color: 'var(--text-muted)' }} className="text-xs opacity-60 mt-0.5">Actas con confianza media/alta y votos dentro de la lista nominal.</p>
+              </div>
               <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)' }}
                 className="text-lg font-medium">{data?.standardQueue ?? 0}</span>
             </div>

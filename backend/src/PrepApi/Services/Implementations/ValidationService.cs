@@ -33,7 +33,18 @@ namespace PrepApi.Services.Implementations
             { "1817", 546 },
             { "1818", 534 },
             { "1819", 686 },
-            { "1820", 622 }
+            { "1820", 622 },
+            {"1", 415},
+            {"2", 627},
+            {"4", 384},
+            {"5", 452},
+            {"6", 664},
+            {"7",420},
+            {"17", 673},
+            {"18", 570},
+            {"19", 566},
+            {"21", 712},
+
         };
 
         public List<ActaValidation> Validate(ExtractionResult extraction)

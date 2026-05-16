@@ -20,7 +20,7 @@ export default function Navbar() {
   const isCapturista = user?.role === 'Capturista'
 
   const navLinks = [
-    { to: '/dashboard', label: 'Dashboard' },
+    { to: '/dashboard', label: 'Tablero de control' },
     { to: '/queue', label: 'Cola de actas' },
   ]
 

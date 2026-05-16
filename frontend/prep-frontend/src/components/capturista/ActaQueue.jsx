@@ -28,49 +28,70 @@ export default function ActaQueue() {
 
   return (
     <div className="max-w-screen-xl mx-auto px-8 py-8 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 style={{ color: 'var(--text)' }} className="text-2xl font-semibold">Cola de actas</h1>
-          <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-1">
-            {actas.length} acta{actas.length !== 1 ? 's' : ''} con los filtros actuales
-          </p>
+      <div>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 style={{ color: 'var(--text)' }} className="text-2xl font-semibold">Cola de actas</h1>
+            <p style={{ color: 'var(--text-muted)' }} className="text-sm mt-1">
+              {actas.length} acta{actas.length !== 1 ? 's' : ''} con los filtros actuales
+            </p>
+          </div>
+          <div className="flex gap-3">
+            {[
+              {
+                value: filter.queue,
+                onChange: v => setFilter(f => ({ ...f, queue: v })),
+                options: [
+                  { value: '', label: 'Toda la cola' },
+                  { value: 'High', label: 'Alta prioridad' },
+                  { value: 'Standard', label: 'Estándar' },
+                ]
+              },
+              {
+                value: filter.status,
+                onChange: v => setFilter(f => ({ ...f, status: v })),
+                options: [
+                  { value: '', label: 'Todos los estados' },
+                  { value: 'Pending', label: 'Pendiente' },
+                  { value: 'InReview', label: 'En revisión' },
+                  { value: 'Approved', label: 'Aprobada' },
+                  { value: 'Rejected', label: 'Rechazada' },
+                ]
+              }
+            ].map((sel, i) => (
+              <select key={i} value={sel.value}
+                onChange={e => sel.onChange(e.target.value)}
+                style={{
+                  background: 'var(--surface)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--text)'
+                }}
+                className="text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
+                {sel.options.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            ))}
+          </div>
         </div>
-        <div className="flex gap-3">
-          {[
-            {
-              value: filter.queue,
-              onChange: v => setFilter(f => ({ ...f, queue: v })),
-              options: [
-                { value: '', label: 'Toda la cola' },
-                { value: 'High', label: 'Alta prioridad' },
-                { value: 'Standard', label: 'Estándar' },
-              ]
-            },
-            {
-              value: filter.status,
-              onChange: v => setFilter(f => ({ ...f, status: v })),
-              options: [
-                { value: '', label: 'Todos los estados' },
-                { value: 'Pending', label: 'Pendiente' },
-                { value: 'InReview', label: 'En revisión' },
-                { value: 'Approved', label: 'Aprobada' },
-                { value: 'Rejected', label: 'Rechazada' },
-              ]
-            }
-          ].map((sel, i) => (
-            <select key={i} value={sel.value}
-              onChange={e => sel.onChange(e.target.value)}
-              style={{
-                background: 'var(--surface)',
-                border: '1px solid var(--border)',
-                color: 'var(--text)'
-              }}
-              className="text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]">
-              {sel.options.map(o => (
-                <option key={o.value} value={o.value}>{o.label}</option>
-              ))}
-            </select>
-          ))}
+
+        <div
+          style={{
+            background: '#f5f3ff',
+            border: '1px solid #c4b5fd',
+            borderRadius: 12,
+            padding: '12px 20px',
+            display: 'flex',
+            gap: 10,
+            alignItems: 'center',
+            marginTop: 12,
+          }}
+        >
+          <span style={{ fontSize: 18 }}>🔍</span>
+          <p style={{ color: '#5b21b6', fontSize: 13 }}>
+            Actas pendientes de revisión: <strong>alta prioridad</strong> con confianza baja o votos que exceden
+            la lista nominal; <strong>estándar</strong> con confianza media/alta y votos dentro de la lista nominal.
+          </p>
         </div>
       </div>
 
