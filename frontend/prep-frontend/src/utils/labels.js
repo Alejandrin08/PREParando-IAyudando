@@ -38,13 +38,13 @@ export const validationLabels = {
 }
 
 export const partyIcons = {
-  votos_pan: '/src/assets/partidos/pan.png',
-  votos_pri: '/src/assets/partidos/pri.png',
-  votos_morena: '/src/assets/partidos/morena.png',
-  votos_prd: '/src/assets/partidos/prd.png',
-  votos_mc: '/src/assets/partidos/mc.png',
-  votos_pt: '/src/assets/partidos/pt.png',
-  votos_pvem: '/src/assets/partidos/pvem.png',
+  votos_pan: '/partidos/pan.png',
+  votos_pri: '/partidos/pri.png',
+  votos_morena: '/partidos/morena.png',
+  votos_prd: '/partidos/prd.png',
+  votos_mc: '/partidos/mc.png',
+  votos_pt: '/partidos/pt.png',
+  votos_pvem: '/partidos/pvem.png',
 }
 
 export const fieldOrder = [
