@@ -187,27 +187,6 @@ namespace PrepApi.Services.Implementations
             };
         }
 
-        private static ActaValidation ValidateNoFieldExceedsNominal(Dictionary<string, string?> fields, string? seccionValue)
-        {
-            var ruleName = "TotalVotesDoNotExceedNominal";
-            var ruleNameFail = "TotalVotesExceedNominal";
-
-
-            if (string.IsNullOrEmpty(seccionValue) ||
-                !TryGetInt(fields, "total_votos", out var total))
-                return Inconclusive(ruleName, $"seccion or total_votos missing");
-
-            var listaNominal = ListaNominalPorSeccion.ContainsKey(seccionValue) ? ListaNominalPorSeccion[seccionValue] : 0;
-            var passed = total <= listaNominal;
-            return new ActaValidation
-            {
-                RuleName = passed ? ruleName : ruleNameFail,
-                Passed = passed,
-                Detail = passed
-                    ? $"total_votos {total} is within lista_nominal {listaNominal}"
-                    : $"total_votos {total} exceeds lista_nominal {listaNominal}"
-            };
-        }
 
         private static bool TryGetInt(Dictionary<string, string?> fields, string key, out int value)
         {
