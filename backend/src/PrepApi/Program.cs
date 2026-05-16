@@ -71,15 +71,14 @@ builder.Services.AddScoped<Scalar.AspNetCore.ScalarOptions>();
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("FrontendPolicy", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy
-            .SetIsOriginAllowed(origin =>
-                origin.StartsWith("https://pre-parando-i-ayudando")
-                || origin.StartsWith("http://localhost")
-            )
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.WithOrigins(
+            "https://pre-parando-i-ayudando.vercel.app",
+            "http://localhost:5173"  // para desarrollo local
+        )
+        .AllowAnyHeader()
+        .AllowAnyMethod();
     });
 });
 
