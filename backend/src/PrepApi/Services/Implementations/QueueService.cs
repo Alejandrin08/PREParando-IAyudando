@@ -10,13 +10,12 @@ namespace PrepApi.Services.Implementations
             var exceedsNominal = validations.Any(v =>
                 v.RuleName == "TotalVotesExceedNominal" && !v.Passed);
 
-            var lowConfidence = extraction.GlobalLevel == ConfidenceLevel.Medium ||
-                                extraction.GlobalLevel == ConfidenceLevel.Low;
+            var lowConfidence = extraction.GlobalConfidence < 0.70;
 
             if (exceedsNominal || lowConfidence)
-                return "Standard";
+                return "High";
 
-            return "High";
+            return "Standard";
         }
     }
 }
