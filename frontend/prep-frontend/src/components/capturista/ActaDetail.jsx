@@ -826,7 +826,7 @@ export default function ActaDetail({ mode = 'capturista' }) {
                 className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-50 transition-colors disabled:opacity-50">
                 Rechazar totalmente
               </button>
-              <button onClick={handleVerifyApprove} disabled={actionLoading}
+              <button onClick={handleApprove} disabled={actionLoading}
                 style={{ background: 'var(--accent)', color: 'white' }}
                 className="px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
                 {hasIlegible ? '⚠ Contabilizar acta' : 'Contabilizar acta ✓'}

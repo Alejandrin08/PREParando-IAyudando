@@ -6,45 +6,45 @@ const pct = (a, b) => (b === 0 ? '0' : ((a / b) * 100).toFixed(1))
 const fmtDate = (d) => d ? new Date(d).toLocaleString('es-MX', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'
 
 const STATUS_LABELS = {
-  Pending:              'Acta pendiente',
-  InReview:             'Acta en revisión',
-  Approved:             'Acta aprobada',
-  Rejected:             'Acta rechazada',
+  Pending: 'Acta pendiente',
+  InReview: 'Acta en revisión',
+  Approved: 'Acta aprobada',
+  Rejected: 'Acta rechazada',
   RejectedByCapturista: 'Acta en verificación',
 }
 const STATUS_COLOR = {
-  Pending:              '#6366f1',
-  InReview:             '#f59e0b',
-  Approved:             '#10b981',
-  Rejected:             '#ef4444',
+  Pending: '#6366f1',
+  InReview: '#f59e0b',
+  Approved: '#10b981',
+  Rejected: '#ef4444',
   RejectedByCapturista: '#8b5cf6',
 }
 
 // Motivos exactos por categoría
 const MOTIVOS_NO_CONT = {
-  ExcedeLN:        'Excede lista nominal',
-  TodosIlegibles:  'Todos los campos ilegibles o sin dato',
-  SinActa:         'Sin acta',
+  ExcedeLN: 'Excede lista nominal',
+  TodosIlegibles: 'Todos los campos ilegibles o sin dato',
+  SinActa: 'Sin acta',
 }
 const MOTIVOS_CONT = {
-  Normal:          'Normal',
-  SinDato:         'Sin dato',
+  Normal: 'Normal',
+  SinDato: 'Sin dato',
   CamposIlegibles: 'Con datos ilegibles',
 }
 
 // Errores aritméticos exactos
 const ERRORES_ARITMETICOS = {
-  SumaVotos:      'Suma de votos vs. total declarado',
-  TotalUrnas:     'Total de votos vs. conteo de urnas',
-  PersonasVotos:  'Personas que votaron vs. votos en urnas',
-  ExcedeNominal:  'Total de votos excede lista nominal',
+  SumaVotos: 'Suma de votos vs. total declarado',
+  TotalUrnas: 'Total de votos vs. conteo de urnas',
+  PersonasVotos: 'Personas que votaron vs. votos en urnas',
+  ExcedeNominal: 'Total de votos excede lista nominal',
 }
 
 // Niveles de confianza
 const CONF_NIVEL = (v) => {
   if (v == null) return 'Sin dato'
-  if (v > 0.85)  return 'Alta'
-  if (v > 0.60)  return 'Media'
+  if (v > 0.85) return 'Alta'
+  if (v > 0.60) return 'Media'
   return 'Baja'
 }
 const CONF_COLOR = { Alta: '#10b981', Media: '#f59e0b', Baja: '#ef4444' }
@@ -110,7 +110,7 @@ function AuditTable({ cols, rows, emptyMsg = 'Sin datos' }) {
             <tr key={i} style={{ borderBottom: '1px solid var(--border)', background: i % 2 === 0 ? 'transparent' : 'var(--surface-2)' }}>
               {cols.map(c => (
                 <td key={c.key} style={{ padding: '9px 12px', color: 'var(--text)', textAlign: c.right ? 'right' : 'left', fontFamily: c.mono ? 'DM Mono, monospace' : undefined, whiteSpace: 'nowrap' }}>
-                  {c.render ? c.render(row[c.key], row) : (row[c.key] ?? '—')}
+                  {c.render ? c.render(row[c.field ?? c.key], row) : (row[c.field ?? c.key] ?? '—')}
                 </td>
               ))}
             </tr>
@@ -136,14 +136,14 @@ function StatChip({ label, value, sub, color }) {
 // Stacked horizontal bar: cada grupo (No Contabilizada / Contabilizada) muestra
 // sus 3 motivos como segmentos de color. Siempre 6 filas fijas, escala con n.
 const NO_CONT_COLORS = ['#c0392b', '#e74c3c', '#f1948a']
-const CONT_COLORS    = ['#0891b2', '#06b6d4', '#67e8f9']
+const CONT_COLORS = ['#0891b2', '#06b6d4', '#67e8f9']
 
 function RechazadasChart({ rows }) {
   if (!rows.length) return <p style={{ fontSize: 13, color: 'var(--text-muted)', textAlign: 'center', padding: '20px 0' }}>Sin datos</p>
 
   // Conteos por categoría + motivo
   const noCont = Object.fromEntries(Object.keys(MOTIVOS_NO_CONT).map(k => [k, 0]))
-  const cont   = Object.fromEntries(Object.keys(MOTIVOS_CONT).map(k => [k, 0]))
+  const cont = Object.fromEntries(Object.keys(MOTIVOS_CONT).map(k => [k, 0]))
 
   rows.forEach(r => {
     if (r.rejectionCategory === 'NoContabilizada' && noCont[r.rejectionReason] !== undefined)
@@ -153,8 +153,8 @@ function RechazadasChart({ rows }) {
   })
 
   const totalNC = Object.values(noCont).reduce((a, b) => a + b, 0)
-  const totalC  = Object.values(cont).reduce((a, b)  => a + b, 0)
-  const grand   = totalNC + totalC || 1
+  const totalC = Object.values(cont).reduce((a, b) => a + b, 0)
+  const grand = totalNC + totalC || 1
 
   const renderGroup = (label, counts, labels, colors, total) => {
     const entries = Object.entries(counts)
@@ -191,7 +191,7 @@ function RechazadasChart({ rows }) {
   return (
     <div>
       {renderGroup('No contabilizadas', noCont, MOTIVOS_NO_CONT, NO_CONT_COLORS, totalNC)}
-      {renderGroup('Contabilizadas',    cont,   MOTIVOS_CONT,    CONT_COLORS,    totalC)}
+      {renderGroup('Contabilizadas', cont, MOTIVOS_CONT, CONT_COLORS, totalC)}
       {/* Proportional overview bar */}
       <div style={{ marginTop: 6 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -227,12 +227,12 @@ function ErroresChart({ rows }) {
   rows.forEach(r => {
     const errs = r.arithmeticErrors ?? {}
     Object.keys(ERRORES_ARITMETICOS).forEach(k => {
-      if (errs[k] === true)       counts[k].fail++
+      if (errs[k] === true) counts[k].fail++
       else if (errs[k] === false) counts[k].pass++
       else {
         // fallback: si no hay detalle, marca todo como fallo si !arithmeticValidationOk
         if (!r.arithmeticValidationOk) counts[k].fail++
-        else                            counts[k].pass++
+        else counts[k].pass++
       }
     })
   })
@@ -243,9 +243,9 @@ function ErroresChart({ rows }) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
       {Object.entries(ERRORES_ARITMETICOS).map(([key, label], i) => {
         const { fail, pass } = counts[key]
-        const total   = fail + pass
+        const total = fail + pass
         const failPct = total === 0 ? 0 : (fail / total) * 100
-        const barW    = (fail / maxFail) * 100
+        const barW = (fail / maxFail) * 100
         return (
           <div key={key}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -290,14 +290,14 @@ function ConfianzaChart({ rows }) {
   // Conteo por nivel
   const nivel = { Alta: 0, Media: 0, Baja: 0 }
   rows.forEach(r => { nivel[CONF_NIVEL(r.globalConfidence)]++ })
-  const total  = rows.length
+  const total = rows.length
   const maxNiv = Math.max(...Object.values(nivel), 1)
 
   // Histogram bins (10 deciles de globalConfidence)
   const bins = Array.from({ length: 10 }, () => ({ Alta: 0, Media: 0, Baja: 0 }))
   rows.forEach(r => {
     const conf = r.globalConfidence ?? 0
-    const bin  = Math.min(Math.floor(conf * 10), 9)
+    const bin = Math.min(Math.floor(conf * 10), 9)
     bins[bin][CONF_NIVEL(r.globalConfidence)]++
   })
   const maxBin = Math.max(...bins.map(b => b.Alta + b.Media + b.Baja), 1)
@@ -315,7 +315,7 @@ function ConfianzaChart({ rows }) {
         </p>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 110 }}>
           {bins.map((bin, i) => {
-            const t    = bin.Alta + bin.Media + bin.Baja
+            const t = bin.Alta + bin.Media + bin.Baja
             const totH = (t / maxBin) * 100
             return (
               <div key={i} title={`${i * 10}–${(i + 1) * 10}%: ${t} actas`}
@@ -323,9 +323,9 @@ function ConfianzaChart({ rows }) {
                 {t > 0 && <span style={{ fontSize: 8, fontFamily: 'DM Mono, monospace', color: 'var(--text-muted)', marginBottom: 1 }}>{t}</span>}
                 <div style={{ width: '100%', height: `${totH}%`, display: 'flex', flexDirection: 'column-reverse', borderRadius: '3px 3px 0 0', overflow: 'hidden' }}>
                   {/* apilado: Baja abajo, Media medio, Alta arriba */}
-                  <div style={{ width: '100%', flex: bin.Baja,  background: CONF_COLOR.Baja  }} />
+                  <div style={{ width: '100%', flex: bin.Baja, background: CONF_COLOR.Baja }} />
                   <div style={{ width: '100%', flex: bin.Media, background: CONF_COLOR.Media }} />
-                  <div style={{ width: '100%', flex: bin.Alta,  background: CONF_COLOR.Alta  }} />
+                  <div style={{ width: '100%', flex: bin.Alta, background: CONF_COLOR.Alta }} />
                 </div>
               </div>
             )
@@ -411,9 +411,9 @@ function DrawerTrigger({ open, onToggle, counts }) {
 
 // ─── Drawer ───────────────────────────────────────────────────────────────────
 const DRAWER_ITEMS = [
-  { key: 'rejected',  label: 'Rechazadas',      countKey: 'rejected' },
-  { key: 'errors',    label: 'Errores aritmét.', countKey: 'errors'   },
-  { key: 'confianza', label: 'Confianza',        countKey: 'lowConf'  },
+  { key: 'rejected', label: 'Rechazadas', countKey: 'rejected' },
+  { key: 'errors', label: 'Errores aritmét.', countKey: 'errors' },
+  { key: 'confianza', label: 'Confianza', countKey: 'lowConf' },
 ]
 
 function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
@@ -423,10 +423,10 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
   const counts = { rejected: withRejection.length, errors: withErrors.length, lowConf: lowConf.length }
 
   const rejNC = withRejection.filter(r => r.rejectionCategory === 'NoContabilizada').length
-  const rejC  = withRejection.filter(r => r.rejectionCategory === 'Contabilizada').length
+  const rejC = withRejection.filter(r => r.rejectionCategory === 'Contabilizada').length
 
   const highQueue = withErrors.filter(r => r.assignedQueue === 'High').length
-  const avgConf   = withErrors.length
+  const avgConf = withErrors.length
     ? (withErrors.reduce((s, r) => s + (r.globalConfidence ?? 0), 0) / withErrors.length * 100).toFixed(0)
     : '—'
 
@@ -471,9 +471,9 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
           {activeTab === 'rejected' && (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                <StatChip label="Total rechazadas"   value={fmt(withRejection.length)} color="#a32d2d" sub="con motivo registrado" />
-                <StatChip label="No contabilizadas"  value={fmt(rejNC)} color="#c0392b" sub={`${pct(rejNC, withRejection.length)}%`} />
-                <StatChip label="Contabilizadas"     value={fmt(rejC)}  color="#0891b2" sub={`${pct(rejC, withRejection.length)}%`} />
+                <StatChip label="Total rechazadas" value={fmt(withRejection.length)} color="#a32d2d" sub="con motivo registrado" />
+                <StatChip label="No contabilizadas" value={fmt(rejNC)} color="#c0392b" sub={`${pct(rejNC, withRejection.length)}%`} />
+                <StatChip label="Contabilizadas" value={fmt(rejC)} color="#0891b2" sub={`${pct(rejC, withRejection.length)}%`} />
               </div>
               <RechazadasChart rows={withRejection} />
             </>
@@ -482,9 +482,9 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
           {activeTab === 'errors' && (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                <StatChip label="Total con error"  value={fmt(withErrors.length)} color="#854f0b" sub="actas con al menos un error" />
-                <StatChip label="Cola alta"        value={fmt(highQueue)}         sub={`${pct(highQueue, withErrors.length)}% del grupo`} />
-                <StatChip label="Confianza prom."  value={`${avgConf}%`}          sub="dentro del grupo" />
+                <StatChip label="Total con error" value={fmt(withErrors.length)} color="#854f0b" sub="actas con al menos un error" />
+                <StatChip label="Cola alta" value={fmt(highQueue)} sub={`${pct(highQueue, withErrors.length)}% del grupo`} />
+                <StatChip label="Confianza prom." value={`${avgConf}%`} sub="dentro del grupo" />
               </div>
               <ErroresChart rows={withErrors} />
             </>
@@ -493,9 +493,9 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
           {activeTab === 'confianza' && (
             <>
               <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                <StatChip label="Alta  (>85%)"    value={fmt(nivelCounts.Alta)}  color="#10b981" sub={`${pct(nivelCounts.Alta, allFiltered.length)}%`} />
-                <StatChip label="Media (60–85%)"  value={fmt(nivelCounts.Media)} color="#f59e0b" sub={`${pct(nivelCounts.Media, allFiltered.length)}%`} />
-                <StatChip label="Baja  (<60%)"    value={fmt(nivelCounts.Baja)}  color="#ef4444" sub={`${pct(nivelCounts.Baja, allFiltered.length)}%`} />
+                <StatChip label="Alta  (>85%)" value={fmt(nivelCounts.Alta)} color="#10b981" sub={`${pct(nivelCounts.Alta, allFiltered.length)}%`} />
+                <StatChip label="Media (60–85%)" value={fmt(nivelCounts.Media)} color="#f59e0b" sub={`${pct(nivelCounts.Media, allFiltered.length)}%`} />
+                <StatChip label="Baja  (<60%)" value={fmt(nivelCounts.Baja)} color="#ef4444" sub={`${pct(nivelCounts.Baja, allFiltered.length)}%`} />
               </div>
               <ConfianzaChart rows={allFiltered} />
             </>
@@ -509,9 +509,9 @@ function Drawer({ open, withRejection, withErrors, lowConf, allFiltered }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function AuditDashboard() {
-  const [data,       setData]       = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [filter,     setFilter]     = useState({ entity: '', status: '', dateFrom: '', dateTo: '' })
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [filter, setFilter] = useState({ entity: '', status: '', dateFrom: '', dateTo: '' })
   const [drawerOpen, setDrawerOpen] = useState(false)
   const printRef = useRef()
 
@@ -561,10 +561,10 @@ export default function AuditDashboard() {
   const total = dashboard.totalActas || 0
 
   const filtered = actas.filter(a => {
-    if (filter.entity   && !a.entity?.toLowerCase().includes(filter.entity.toLowerCase())) return false
-    if (filter.status   && a.status !== filter.status) return false
+    if (filter.entity && !a.entity?.toLowerCase().includes(filter.entity.toLowerCase())) return false
+    if (filter.status && a.status !== filter.status) return false
     if (filter.dateFrom && new Date(a.ingestedAt) < new Date(filter.dateFrom)) return false
-    if (filter.dateTo   && new Date(a.ingestedAt) > new Date(filter.dateTo + 'T23:59:59')) return false
+    if (filter.dateTo && new Date(a.ingestedAt) > new Date(filter.dateTo + 'T23:59:59')) return false
     return true
   })
 
@@ -573,10 +573,10 @@ export default function AuditDashboard() {
       const key = a.entity || 'Sin entidad'
       if (!acc[key]) acc[key] = { entity: key, total: 0, approved: 0, rejected: 0, pending: 0, errors: 0 }
       acc[key].total++
-      if (a.status === 'Approved')      acc[key].approved++
+      if (a.status === 'Approved') acc[key].approved++
       else if (a.status === 'Rejected') acc[key].rejected++
-      else                               acc[key].pending++
-      if (!a.arithmeticValidationOk)    acc[key].errors++
+      else acc[key].pending++
+      if (!a.arithmeticValidationOk) acc[key].errors++
       return acc
     }, {})
   ).sort((a, b) => b.total - a.total)
@@ -587,7 +587,7 @@ export default function AuditDashboard() {
       .reduce((acc, a) => {
         const key = a.approvedBy
         if (!acc[key]) acc[key] = { user: key, approved: 0, rejected: 0, lastAction: null }
-        if (a.status === 'Approved')      acc[key].approved++
+        if (a.status === 'Approved') acc[key].approved++
         else if (a.status === 'Rejected') acc[key].rejected++
         if (!acc[key].lastAction || new Date(a.approvedAt) > new Date(acc[key].lastAction))
           acc[key].lastAction = a.approvedAt
@@ -596,8 +596,8 @@ export default function AuditDashboard() {
   ).sort((a, b) => (b.approved + b.rejected) - (a.approved + a.rejected))
 
   const withRejection = filtered.filter(a => a.rejectionReason)
-  const withErrors    = filtered.filter(a => !a.arithmeticValidationOk)
-  const lowConf       = filtered.filter(a => (a.globalConfidence ?? 1) < 0.60)
+  const withErrors = filtered.filter(a => !a.arithmeticValidationOk)
+  const lowConf = filtered.filter(a => (a.globalConfidence ?? 1) < 0.60)
 
   const reportDate = new Date().toLocaleString('es-MX', { dateStyle: 'full', timeStyle: 'short' })
 
@@ -631,14 +631,13 @@ export default function AuditDashboard() {
         <div className="no-print" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 12, padding: '14px 20px' }}>
           <p style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>Filtros</p>
           <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <input placeholder="Distrito "
-              value={filter.entity}
+            <input placeholder="Entidad / municipio" value={filter.entity}
               onChange={e => setFilter(f => ({ ...f, entity: e.target.value }))}
               style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13, width: 200 }} />
             <select value={filter.status}
               onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}
               style={{ padding: '7px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'var(--surface-2)', color: 'var(--text)', fontSize: 13 }}>
-              <option value="">Todos los distritos</option>
+              <option value="">Todos los estados</option>
               {Object.entries(STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
             <input type="date" value={filter.dateFrom}
@@ -664,19 +663,18 @@ export default function AuditDashboard() {
           <KpiCard label="Total actas" value={filtered.length} color="var(--accent)" sub={`de ${fmt(total)} en sistema`} />
           <KpiCard label="Actas aprobadas" value={filtered.filter(a => a.status === 'Approved').length} color="#10b981" sub={`${pct(filtered.filter(a => a.status === 'Approved').length, filtered.length)}% del filtro`} />
           <KpiCard label="Actas rechazadas" value={filtered.filter(a => a.status === 'Rejected').length} color="#ef4444" sub={`${pct(filtered.filter(a => a.status === 'Rejected').length, filtered.length)}% del filtro`} />
-          <KpiCard label="Errores aritméticos" value={filtered.filter(a => !a.arithmeticValidationOk).length} color="#f59e0b" sub={`${pct(filtered.filter(a => !a.arithmeticValidationOk).length, filtered.length)}% del filtro`} />
+          <KpiCard label="Errores aritméticos" value={withErrors.length} color="#f59e0b" sub={`${pct(withErrors.length, filtered.length)}% del filtro`} />
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
           <KpiCard label="Actas pendientes" value={filtered.filter(a => a.status === 'Pending').length} color="#6366f1" />
           <KpiCard label="Actas en revisión" value={filtered.filter(a => a.status === 'InReview' || a.status === 'RejectedByCapturista').length} color="#8b5cf6" />
-          <KpiCard label="Actas con confianza baja" value={filtered.filter(a => a.confidenceLevel === 'Low').length} color="#ec4899" sub="Requieren atención" />
-          <KpiCard label="Actas en cola de alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length} color="#ef4444" />
+          <KpiCard label="Actas con confianza baja" value={lowConf.length} color="#ef4444" sub="< 60% de confianza" />
+          <KpiCard label="Actas en cola alta prioridad" value={filtered.filter(a => a.assignedQueue === 'High').length} color="#ec4899" />
         </div>
 
         {/* Distribución + Usuarios */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-
-          <Section title="Distribución por distrito" >
+          <Section title="Distribución por estado">
             {Object.entries(STATUS_LABELS).map(([status, label]) => {
               const count = filtered.filter(a => a.status === status).length
               return <ProgressBar key={status} label={label} value={count} total={filtered.length} color={STATUS_COLOR[status]} />
@@ -685,9 +683,9 @@ export default function AuditDashboard() {
           <Section title="Actividad por usuario">
             <AuditTable
               cols={[
-                { key: 'user',       label: 'Usuario' },
-                { key: 'approved',   label: 'Aprobadas',    right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-                { key: 'rejected',   label: 'Rechazadas',   right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
+                { key: 'user', label: 'Usuario' },
+                { key: 'approved', label: 'Actas aprobadas', right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
+                { key: 'rejected', label: 'Actas rechazadas', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
                 { key: 'lastAction', label: 'Última acción', render: v => fmtDate(v) },
               ]}
               rows={byUser}
@@ -696,104 +694,36 @@ export default function AuditDashboard() {
           </Section>
         </div>
 
-        <Section title="Resumen por distrito">
+        {/* Entidad */}
+        <Section title="Resumen por entidad / municipio">
           <AuditTable
             cols={[
               { key: 'entity', label: 'Entidad' },
-              { key: 'total',    label: 'Actas totales',    right: true, mono: true },
+              { key: 'total_1', label: 'Total', field: 'total', right: true, mono: true },
               { key: 'approved', label: 'Actas aprobadas', right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
               { key: 'rejected', label: 'Actas rechazadas', right: true, mono: true, render: v => <span style={{ color: v > 0 ? '#ef4444' : 'var(--text-muted)', fontWeight: v > 0 ? 600 : 400 }}>{fmt(v)}</span> },
-              { key: 'pending',  label: 'Actas pendientes', right: true, mono: true },
-              { key: 'errors',   label: 'Errores aritméticos', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
-              { key: 'total',    label: 'Tasa de aprobación', right: true, render: (v, row) => `${pct(row.approved, row.total)}%` },
+              { key: 'pending', label: 'Actas pendientes', right: true, mono: true },
+              { key: 'errors', label: 'Errores aritméticos', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
+              { key: 'total_2', label: 'Tasa de aprobación', field: 'total', right: true, render: (v, row) => `${pct(row.approved, row.total)}%` },
             ]}
             rows={byEntity}
             emptyMsg="Sin actas con los filtros actuales"
           />
         </Section>
 
-        <Section title="Actividad por usuario">
-          <AuditTable
-            cols={[
-              { key: 'user',       label: 'Usuario / correo' },
-              { key: 'approved',   label: 'Actas aprobadas',  right: true, mono: true, render: v => <span style={{ color: '#10b981', fontWeight: 600 }}>{fmt(v)}</span> },
-              { key: 'rejected',   label: 'Actas rechazadas', right: true, mono: true, render: v => v > 0 ? <span style={{ color: '#ef4444', fontWeight: 600 }}>{fmt(v)}</span> : <span style={{ color: 'var(--text-muted)' }}>0</span> },
-              { key: 'lastAction', label: 'Última acción', render: v => fmtDate(v) },
-            ]}
-            rows={byUser}
-            emptyMsg="Ninguna acta ha sido procesada aún"
-          />
-        </Section>
-
-        <Section title="Actas rechazadas con motivo registrado">
-          <AuditTable
-            cols={[
-              { key: 'id',          label: '#', mono: true },
-              { key: 'entity',      label: 'Entidad' },
-              { key: 'municipality',label: 'Municipio' },
-              { key: 'section',     label: 'Sección', mono: true },
-              { key: 'rejectionCategory', label: 'Categoría', render: v => v === 'Contabilizada' ? <span style={{ color: '#0891b2', fontWeight: 600 }}>Contabilizada</span> : v === 'NoContabilizada' ? <span style={{ color: '#be185d', fontWeight: 600 }}>No Contabilizada</span> : <span style={{ color: 'var(--text-muted)' }}>—</span> },
-              { key: 'rejectionReason', label: 'Motivo', render: v => REJECTION_LABELS[v] ?? v ?? '—' },
-              { key: 'approvedBy',  label: 'Procesada por' },
-              { key: 'approvedAt',  label: 'Fecha', render: v => fmtDate(v) },
-            ]}
-            rows={withRejection}
-            emptyMsg="No hay actas rechazadas con motivo registrado"
-          />
-        </Section>
-
-        <Section title="Actas con errores aritméticos">
-          <AuditTable
-            cols={[
-              { key: 'id',           label: '#', mono: true },
-              { key: 'entity',       label: 'Entidad' },
-              { key: 'municipality', label: 'Municipio' },
-              { key: 'section',      label: 'Sección', mono: true },
-              { key: 'status',       label: 'Estado', render: v => <span style={{ color: STATUS_COLOR[v], fontWeight: 600 }}>{STATUS_LABELS[v] ?? v}</span> },
-              { key: 'globalConfidence', label: 'Confianza', mono: true, right: true, render: v => `${((v ?? 0) * 100).toFixed(0)}%` },
-              { key: 'assignedQueue',    label: 'Cola', render: v => v === 'High' ? <span style={{ color: '#ef4444', fontWeight: 700 }}>Alta</span> : <span style={{ color: 'var(--text-muted)' }}>Estándar</span> },
-              { key: 'ingestedAt',   label: 'Ingresada', render: v => fmtDateShort(v) },
-            ]}
-            rows={withErrors}
-            emptyMsg="No hay actas con errores aritméticos"
-          />
-        </Section>
-
-        <Section title="Actas con confianza baja de la IA">
-          <AuditTable
-            cols={[
-              { key: 'id',           label: '#', mono: true },
-              { key: 'entity',       label: 'Entidad' },
-              { key: 'municipality', label: 'Municipio' },
-              { key: 'section',      label: 'Sección', mono: true },
-              { key: 'globalConfidence', label: 'Confianza global', mono: true, right: true, render: v => <span style={{ color: '#ef4444', fontWeight: 700 }}>{((v ?? 0) * 100).toFixed(1)}%</span> },
-              { key: 'status', label: 'Estado', render: v => <span style={{ color: STATUS_COLOR[v] ?? 'var(--text-muted)', fontWeight: 600 }}>{STATUS_LABELS[v] ?? v}</span> },
-              { key: 'approvedBy', label: 'Procesada por' },
-            ]}
-            rows={lowConf}
-            emptyMsg="No hay actas con confianza baja"
-          />
-        </Section>
-
-        <Section title="Trazabilidad completa de actas (filtradas)">
-          <AuditTable
-            cols={[
-              { key: 'id',           label: '#', mono: true },
-              { key: 'entity',       label: 'Entidad' },
-              { key: 'municipality', label: 'Municipio' },
-              { key: 'section',      label: 'Sección', mono: true },
-              { key: 'status', label: 'Estado', render: v => <span style={{ color: STATUS_COLOR[v] ?? 'var(--text-muted)', fontWeight: 600 }}>{STATUS_LABELS[v] ?? v}</span> },
-              { key: 'assignedQueue', label: 'Cola', render: v => v === 'High' ? <span style={{ color: '#ef4444', fontWeight: 700 }}>Alta</span> : 'Estándar' },
-              { key: 'globalConfidence', label: 'IA %', mono: true, right: true, render: v => `${((v ?? 0) * 100).toFixed(0)}%` },
-              { key: 'arithmeticValidationOk', label: 'Aritmética', render: v => v ? <span style={{ color: '#10b981' }}>✓ OK</span> : <span style={{ color: '#ef4444' }}>✗ Error</span> },
-              { key: 'ingestedAt',  label: 'Ingresada',   render: v => fmtDateShort(v) },
-              { key: 'approvedBy',  label: 'Procesada por' },
-              { key: 'approvedAt',  label: 'Procesada el', render: v => fmtDate(v) },
-            ]}
-            rows={filtered}
-            emptyMsg="Sin actas con los filtros actuales"
-          />
-        </Section>
+        {/* Drawer */}
+        <DrawerTrigger
+          open={drawerOpen}
+          onToggle={() => setDrawerOpen(o => !o)}
+          counts={{ rejected: withRejection.length, errors: withErrors.length, lowConf: lowConf.length }}
+        />
+        <Drawer
+          open={drawerOpen}
+          withRejection={withRejection}
+          withErrors={withErrors}
+          lowConf={lowConf}
+          allFiltered={filtered}
+        />
 
         <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: 11, color: 'var(--text-muted)' }}>Sistema PREP · Reporte de auditoría generado el {reportDate}</p>
