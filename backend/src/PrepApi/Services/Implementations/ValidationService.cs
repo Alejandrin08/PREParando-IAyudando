@@ -47,7 +47,7 @@ namespace PrepApi.Services.Implementations
             validations.Add(ValidatePersonasMatchUrnas(fields));
             validations.Add(ValidateNoFieldExceedsNominal(fields, seccionField?.Value));
             validations.AddRange(ValidateNumberVsLetter(fields));
-
+            Console.WriteLine($"Total validations generated: {validations.Count}");
             return validations;
         }
 
