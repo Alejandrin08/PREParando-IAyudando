@@ -15,6 +15,23 @@ export default function Navbar() {
     navigate('/login')
   }
 
+  const isVerificador = user?.role === 'Verificador'
+  const isAdmin = user?.role === 'Admin'
+  const isCapturista = user?.role === 'Capturista'
+
+  const navLinks = [
+    { to: '/dashboard', label: 'Dashboard' },
+    { to: '/queue', label: 'Cola de actas' },
+  ]
+
+  if (isAdmin || isVerificador) {
+    navLinks.push({ to: '/verificador', label: 'Cola de verificación' })
+  }
+
+  if (isAdmin) {
+    navLinks.push({ to: '/auditoria', label: 'Auditoría' })
+  }
+
   return (
     <>
       <nav style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface)', position: 'sticky', top: 0, zIndex: 50 }}>
@@ -26,15 +43,15 @@ export default function Navbar() {
               <span style={{ fontFamily: 'DM Mono, monospace' }} className="text-white text-xs font-bold">P</span>
             </div>
             <span style={{ fontFamily: 'DM Mono, monospace', color: 'var(--text)' }} className="text-sm font-medium">
-              PREP <span style={{ color: 'var(--text-muted)' }}>· Captura</span>
+              PREP{' '}
+              <span style={{ color: 'var(--text-muted)' }}>
+                · {isVerificador ? 'Verificación' : 'Captura'}
+              </span>
             </span>
           </div>
 
           <div className="flex items-center gap-1">
-            {[
-              { to: '/dashboard', label: 'Dashboard' },
-              { to: '/queue', label: 'Cola de actas' },
-            ].map(({ to, label }) => (
+            {navLinks.map(({ to, label }) => (
               <NavLink key={to} to={to}
                 style={({ isActive }) => ({
                   color: isActive ? 'var(--accent)' : 'var(--text-muted)',
@@ -51,7 +68,7 @@ export default function Navbar() {
               </NavLink>
             ))}
 
-            {user?.role === 'Admin' && (
+            {isAdmin && (
               <button
                 onClick={() => setShowUpload(true)}
                 style={{
@@ -104,8 +121,13 @@ export default function Navbar() {
                 <p style={{ color: 'var(--text)', fontSize: '0.775rem', fontWeight: 500, lineHeight: 1.2 }}>
                   {user?.fullName}
                 </p>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.7rem', lineHeight: 1.2 }}>
-                  {user?.role}
+                <p style={{ fontSize: '0.7rem', lineHeight: 1.2 }}>
+                  <span style={{
+                    color: isVerificador ? '#7c3aed' : isAdmin ? '#b45309' : 'var(--text-muted)',
+                    fontWeight: isVerificador || isAdmin ? 600 : 400,
+                  }}>
+                    {user?.role}
+                  </span>
                 </p>
               </div>
               <button onClick={handleLogout}
@@ -122,6 +144,7 @@ export default function Navbar() {
               </button>
             </div>
           </div>
+
         </div>
       </nav>
 

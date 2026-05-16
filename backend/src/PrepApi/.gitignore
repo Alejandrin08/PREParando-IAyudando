@@ -15,6 +15,9 @@ appsettings.json
 *.userosscache
 *.sln.docstates
 
+*InitialCreate.cs
+*InitialCreate.Designer.cs
+
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
@@ -58,6 +61,8 @@ nunit-*.xml
 [Dd]ebugPS/
 [Rr]eleasePS/
 dlldata.c
+
+PrepApi.csproj.lscache
 
 # Benchmark Results
 BenchmarkDotNet.Artifacts/

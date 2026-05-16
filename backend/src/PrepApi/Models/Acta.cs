@@ -18,6 +18,12 @@ namespace PrepApi.Models
         [MaxLength(20)]
         public string Section { get; set; } = string.Empty;
 
+        public int District { get; set; }
+
+        public string? RejectionReason { get; set; }
+
+        public string? RejectionCategory { get; set; }
+
         public float GlobalConfidence { get; set; }
         public ConfidenceLevel ConfidenceLevel { get; set; }
 

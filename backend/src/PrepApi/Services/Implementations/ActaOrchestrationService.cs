@@ -8,7 +8,6 @@ namespace PrepApi.Services.Implementations
 {
     public class ActaOrchestrationService : IActaOrchestrationService
     {
-        private readonly AppDbContext _db;
         private readonly IBlobStorageService _blobService;
         private readonly IDocumentIntelligenceService _diService;
         private readonly IValidationService _validationService;
@@ -82,6 +81,7 @@ namespace PrepApi.Services.Implementations
                         var entityField = extraction.Fields.FirstOrDefault(f => f.Name == "entidad");
                         var municipalityField = extraction.Fields.FirstOrDefault(f => f.Name == "municipio");
                         var sectionField = extraction.Fields.FirstOrDefault(f => f.Name == "seccion");
+                        var distritoField = extraction.Fields.FirstOrDefault(f => f.Name == "distrito");
 
                         var acta = new Acta
                         {
@@ -182,7 +182,10 @@ namespace PrepApi.Services.Implementations
 
         public async Task<ActaResponseDto?> ApproveActaAsync(int id, string approvedBy)
         {
-            var acta = await _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -193,13 +196,16 @@ namespace PrepApi.Services.Implementations
             acta.ApprovedBy = approvedBy;
             acta.ApprovedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             return MapToDto(acta);
         }
 
         public async Task<ActaResponseDto?> CorrectFieldAsync(int id, CorrectFieldDto dto)
         {
-            var acta = await _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -239,19 +245,22 @@ namespace PrepApi.Services.Implementations
             var newValidations = _validationService.Validate(extraction);
             newValidations.ForEach(v => v.ActaId = acta.Id);
 
-            _db.ActaValidations.RemoveRange(acta.Validations);
-            _db.ActaValidations.AddRange(newValidations);
+            db.ActaValidations.RemoveRange(acta.Validations);
+            db.ActaValidations.AddRange(newValidations);
 
             acta.ArithmeticValidationOk = newValidations.All(v => v.Passed);
             acta.Status = "InReview";
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             return MapToDto(acta);
         }
 
         public async Task<ActaResponseDto?> RejectActaAsync(int id, string rejectedBy)
         {
-            var acta = await _db.Actas
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
                 .Include(a => a.Fields)
                 .Include(a => a.Validations)
                 .FirstOrDefaultAsync(a => a.Id == id);
@@ -262,13 +271,16 @@ namespace PrepApi.Services.Implementations
             acta.ApprovedBy = rejectedBy;
             acta.ApprovedAt = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             return MapToDto(acta);
         }
 
         public async Task<DashboardDto> GetDashboardAsync()
         {
-            var actas = await _db.Actas.ToListAsync();
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var actas = await db.Actas.ToListAsync();
 
             return new DashboardDto
             {
@@ -283,6 +295,96 @@ namespace PrepApi.Services.Implementations
                 WithLowConfidence = actas.Count(a => a.ConfidenceLevel == ConfidenceLevel.Low),
                 LastUpdated = DateTime.UtcNow
             };
+        }
+
+        public async Task<ActaResponseDto?> RejectByCapturistaAsync(int id, string rejectedBy)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (acta == null) return null;
+
+            acta.Status = "RejectedByCapturista";
+            acta.ApprovedBy = rejectedBy;
+            acta.ApprovedAt = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+            return MapToDto(acta);
+        }
+
+        public async Task<ActaResponseDto?> VerifyApproveAsync(int id, string verifiedBy)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (acta == null) return null;
+
+            acta.Status = "Approved";
+            acta.ApprovedBy = verifiedBy;
+            acta.ApprovedAt = DateTime.UtcNow;
+
+            await db.SaveChangesAsync();
+            return MapToDto(acta);
+        }
+
+        public async Task<ActaResponseDto?> VerifyRejectAsync(int id, VerifyActaDto dto)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var acta = await db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .FirstOrDefaultAsync(a => a.Id == id);
+
+            if (acta == null) return null;
+
+            acta.Status = "Rejected";
+            acta.ApprovedBy = dto.VerifiedBy;
+            acta.ApprovedAt = DateTime.UtcNow;
+            acta.RejectionReason = dto.RejectionReason;
+            acta.RejectionCategory = dto.RejectionCategory;
+
+            if (dto.RejectionCategory == "NoContabilizada")
+            {
+                foreach (var field in acta.Fields
+                    .Where(f => !new[] { "entidad", "municipio", "seccion" }.Contains(f.FieldName)))
+                {
+                    field.NumericValue = null;
+                    field.TextValue = null;
+                }
+            }
+
+            await db.SaveChangesAsync();
+            return MapToDto(acta);
+        }
+
+        public async Task<List<ActaResponseDto>> GetVerificadorQueueAsync(string? status)
+        {
+            using var scope = _scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            var query = db.Actas
+                .Include(a => a.Fields)
+                .Include(a => a.Validations)
+                .Where(a => a.Status == "RejectedByCapturista" || a.Status == "InReviewByVerificador")
+                .AsQueryable();
+
+            if (!string.IsNullOrEmpty(status))
+                query = query.Where(a => a.Status == status);
+
+            var actas = await query.OrderBy(a => a.IngestedAt).ToListAsync();
+            return actas.Select(MapToDto).ToList();
         }
 
         private static ActaResponseDto MapToDto(Acta acta) => new()
@@ -300,7 +402,10 @@ namespace PrepApi.Services.Implementations
             IngestedAt = acta.IngestedAt,
             ApprovedBy = acta.ApprovedBy,
             ApprovedAt = acta.ApprovedAt,
-            ImageUrl = $"https://prepactasstorage.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
+            RejectionReason = acta.RejectionReason,
+            RejectionCategory = acta.RejectionCategory,
+            District = acta.District,
+            ImageUrl = $"https://prepactasstoragedos.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
             Fields = acta.Fields.Select(f => new FieldResponseDto
             {
                 Name = f.FieldName,

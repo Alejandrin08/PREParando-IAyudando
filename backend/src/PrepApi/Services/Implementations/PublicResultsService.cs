@@ -159,7 +159,7 @@ namespace PrepApi.Services.Implementations
                 Status = acta.Status,
                 PublicStatus = publicStatus,
                 PublicStatusDetail = publicDetail,
-                ImageUrl = $"https://prepactasstorage.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
+                ImageUrl = $"https://prepactasstoragedos.blob.core.windows.net/actas-entrenamiento/{acta.ActaId}",
                 GlobalConfidence = acta.GlobalConfidence,
                 IngestedAt = acta.IngestedAt,
                 ApprovedAt = acta.ApprovedAt,
@@ -198,6 +198,10 @@ namespace PrepApi.Services.Implementations
 
                 "Rejected" => ("Incidencia documentada",
                     ResolveRejectionDetail(acta)),
+
+                "RejectedByCapturista" => ("En verificación",
+                    "Esta acta fue enviada a un proceso de verificación adicional. " +
+                    "Los datos se publicarán una vez confirmados por el equipo de verificación."),
 
                 _ => ("Estado desconocido", null)
             };

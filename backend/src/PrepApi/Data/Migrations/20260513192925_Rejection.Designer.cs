@@ -12,8 +12,8 @@ using PrepApi.Data;
 namespace PrepApi.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260512180756_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260513192925_Rejection")]
+    partial class Rejection
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -204,6 +204,12 @@ namespace PrepApi.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("varchar(100)");
+
+                    b.Property<string>("RejectionCategory")
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("RejectionReason")
+                        .HasColumnType("longtext");
 
                     b.Property<string>("Section")
                         .IsRequired()

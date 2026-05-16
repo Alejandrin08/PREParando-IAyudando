@@ -7,17 +7,16 @@ namespace PrepApi.Services.Implementations
     {
         public string AssignQueue(ExtractionResult extraction, List<ActaValidation> validations)
         {
-            var hasFailedValidation = validations.Any(v => !v.Passed);
-            if (hasFailedValidation)
-                return "High";
+            var exceedsNominal = validations.Any(v =>
+                v.RuleName == "TotalVotesExceedNominal" && !v.Passed);
 
-            return extraction.GlobalLevel switch
-            {
-                ConfidenceLevel.High => "Standard",
-                ConfidenceLevel.Medium => "High",
-                ConfidenceLevel.Low => "High",
-                _ => "High"
-            };
+            var lowConfidence = extraction.GlobalLevel == ConfidenceLevel.Medium ||
+                                extraction.GlobalLevel == ConfidenceLevel.Low;
+
+            if (exceedsNominal || lowConfidence)
+                return "Standard";
+
+            return "High";
         }
     }
 }
